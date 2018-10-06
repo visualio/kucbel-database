@@ -1,0 +1,21 @@
+{
+	"name": "kucbel/database",
+	"description": "Database extension",
+	"homepage": "https://bitbucket.org/kucbel/database/",
+	"license": ["GPLv3"],
+	"authors": [{
+		"name": "David Kucbel",
+		"homepage": "https://bitbucket.org/kucbel/"
+	}],
+	"require": {
+		"php": "^7.1",
+		"nette/database": "^2.4",
+		"nette/di": "^2.4",
+		"nette/robot-loader": "^3.0",
+		"nette/utils": "^2.4",
+		"kucbel/scalar": "^1.0"
+	},
+	"autoload": {
+		"classmap": ["src"]
+	}
+}
