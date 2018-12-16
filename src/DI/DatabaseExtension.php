@@ -3,6 +3,7 @@
 namespace Kucbel\Database\DI;
 
 use Kucbel\Database;
+use Kucbel\Scalar\Input\DirectInput;
 use Kucbel\Scalar\Input\ExtensionInput;
 use Nette;
 use Nette\DI\CompilerExtension;
@@ -56,13 +57,20 @@ class DatabaseExtension extends CompilerExtension
 				continue;
 			}
 
-			$table = $class->getConstant( $const );
+			$input = new DirectInput([ $const => $class->getConstant( $const ) ], $class->getShortName() );
 
-			if( !is_string( $table )) {
-				throw new Nette\InvalidStateException("Constant {$class->getName()}::{$const} must be a string.");
+			$list = $input->create( $const )
+				->optional()
+				->array()
+				->string()
+				->match('~^[a-z][a-z0-9$_]*$~i')
+				->fetch();
+
+			if( $list ) {
+				foreach( $list as $table ) {
+					$tables[ $table ] = $type;
+				}
 			}
-
-			$tables[ $table ] = $type;
 		}
 
 		ksort( $tables );
