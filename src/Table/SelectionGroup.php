@@ -1,6 +1,6 @@
 <?php
 
-namespace Kucbel\Database;
+namespace Kucbel\Database\Table;
 
 use Nette\Caching\IStorage;
 use Nette\Database\IConventions;

@@ -2,6 +2,7 @@
 
 namespace Kucbel\Database;
 
+use Kucbel\Database\Table\Selection;
 use Nette;
 use Nette\Caching\IStorage;
 use Nette\Database\Connection;
