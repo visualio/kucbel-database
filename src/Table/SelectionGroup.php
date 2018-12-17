@@ -2,6 +2,7 @@
 
 namespace Kucbel\Database\Table;
 
+use Kucbel\Database\Context;
 use Nette\Caching\IStorage;
 use Nette\Database\IConventions;
 use Nette\Database\Table;

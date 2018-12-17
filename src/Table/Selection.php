@@ -2,10 +2,10 @@
 
 namespace Kucbel\Database\Table;
 
+use Kucbel\Database\Context;
 use Nette;
 use Nette\Caching\IStorage;
 use Nette\Database\IConventions;
-use Kucbel\Database\Context;
 
 class Selection extends Nette\Database\Table\Selection
 {
