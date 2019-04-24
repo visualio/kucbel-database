@@ -13,6 +13,7 @@
 		"nette/di": "^2.4",
 		"nette/robot-loader": "^3.0",
 		"nette/utils": "^2.4",
+		"kucbel/entity": "^1.1",
 		"kucbel/scalar": "^1.0"
 	},
 	"autoload": {

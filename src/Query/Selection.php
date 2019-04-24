@@ -1,13 +1,14 @@
 <?php
 
-namespace Kucbel\Database\Table;
+namespace Kucbel\Database\Query;
 
+use JsonSerializable;
 use Kucbel\Database\Context;
-use Nette;
 use Nette\Caching\IStorage;
 use Nette\Database\IConventions;
+use Nette\Database\Table;
 
-class Selection extends Nette\Database\Table\Selection
+class Selection extends Table\Selection implements JsonSerializable
 {
 	use SelectionTrait;
 

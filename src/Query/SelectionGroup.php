@@ -1,14 +1,15 @@
 <?php
 
-namespace Kucbel\Database\Table;
+namespace Kucbel\Database\Query;
 
+use JsonSerializable;
 use Kucbel\Database\Context;
 use Nette\Caching\IStorage;
 use Nette\Database\IConventions;
 use Nette\Database\Table;
 use Nette\Database\Table\Selection;
 
-class SelectionGroup extends Table\GroupedSelection
+class SelectionGroup extends Table\GroupedSelection implements JsonSerializable
 {
 	use SelectionTrait;
 
