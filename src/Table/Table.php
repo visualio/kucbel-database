@@ -8,6 +8,7 @@ use Kucbel\Database\Row\ActiveRow;
 use Kucbel\Database\Row\MissingRowException;
 use Nette\Database\Table\IRow;
 use Nette\Database\Table\SqlBuilder;
+use Nette\InvalidArgumentException;
 use Nette\SmartObject;
 
 class Table
@@ -26,25 +27,42 @@ class Table
 	private $builder;
 
 	/**
+	 * @var array
+	 */
+	private $options = [
+		'strict'	=> true,
+		'insert'	=> 100,
+	];
+
+	/**
 	 * @var string
 	 */
 	private $name;
 
 	/**
-	 * @var bool
-	 */
-	private $rude;
-
-	/**
 	 * Table constructor.
 	 *
 	 * @param string $name
-	 * @param bool $rude
 	 */
-	function __construct( string $name, bool $rude = true )
+	function __construct( string $name )
 	{
 		$this->name = $name;
-		$this->rude = $rude;
+	}
+
+	/**
+	 * @param string $name
+	 * @param mixed $value
+	 * @return $this
+	 */
+	function setOption( string $name, $value )
+	{
+		if( gettype( $value ) !== gettype( $this->options[ $name ] ?? null )) {
+			throw new InvalidArgumentException("Invalid data type.");
+		}
+
+		$this->options[ $name ] = $value;
+
+		return $this;
 	}
 
 	/**
@@ -94,13 +112,12 @@ class Table
 
 	/**
 	 * @param array $values
-	 * @param int $batch
 	 * @return int
 	 */
-	function insertMany( array $values, int $batch = 100 ) : int
+	function insertMany( array $values ) : int
 	{
-		if( count( $values ) > $batch ) {
-			$chunks = array_chunk( $values, $batch );
+		if( count( $values ) > $this->options['insert'] ) {
+			$chunks = array_chunk( $values, $this->options['insert'] );
 		} elseif( $values ) {
 			$chunks[] = $values;
 		} else {
@@ -130,7 +147,7 @@ class Table
 		$id = $row->getSignature();
 		$ok = $row->update( $values );
 
-		if( !$ok and $this->rude ) {
+		if( !$ok and $this->options['strict'] ) {
 			throw new TableException("Table '{$this->name}' didn't update row #{$id}, just so you know.");
 		}
 
@@ -159,7 +176,7 @@ class Table
 		$id = $row->getSignature();
 		$ok = $row->delete();
 
-		if( !$ok and $this->rude ) {
+		if( !$ok and $this->options['strict'] ) {
 			throw new TableException("Table '{$this->name}' didn't delete row #{$id}, just so you know.");
 		}
 
@@ -247,11 +264,12 @@ class Table
 	 * @param array $where
 	 * @param array $order
 	 * @param int $limit
+	 * @param int $offset
 	 * @return ActiveRow[]
 	 */
-	function findMany( array $where = null, array $order = null, int $limit = null )
+	function findMany( array $where = null, array $order = null, int $limit = null, int $offset = null )
 	{
-		return $this->query( $where, $order, $limit )->fetchAll();
+		return $this->query( $where, $order, $limit, $offset )->fetchAll();
 	}
 
 	/**
