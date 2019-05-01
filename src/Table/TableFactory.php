@@ -13,11 +13,10 @@ class TableFactory extends AbstractFactory
 
 	/**
 	 * @param string $name
-	 * @param bool $rude
 	 * @return Table
 	 */
-	function get( string $name, bool $rude = true ) : Table
+	function get( string $name ) : Table
 	{
-		return $this->tables[ $name ] ?? $this->tables[ $name ] = $this->entity->create( Table::class, $name, $rude );
+		return $this->tables[ $name ] ?? $this->tables[ $name ] = $this->entity->create( Table::class, $name );
 	}
 }

@@ -16,20 +16,19 @@ class Table
 	use SmartObject;
 
 	/**
-	 * @var Context
-	 * @inject
-	 */
-	public $database;
-
-	/**
 	 * @var SqlBuilder | null
 	 */
 	private $builder;
 
 	/**
+	 * @var Context
+	 */
+	protected $database;
+
+	/**
 	 * @var array
 	 */
-	private $options = [
+	protected $options = [
 		'strict'	=> true,
 		'insert'	=> 100,
 	];
@@ -37,15 +36,17 @@ class Table
 	/**
 	 * @var string
 	 */
-	private $name;
+	protected $name;
 
 	/**
 	 * Table constructor.
 	 *
+	 * @param Context $database
 	 * @param string $name
 	 */
-	function __construct( string $name )
+	function __construct( Context $database, string $name )
 	{
+		$this->database = $database;
 		$this->name = $name;
 	}
 

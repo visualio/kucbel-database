@@ -12,14 +12,23 @@ class Transaction
 
 	/**
 	 * @var Context
-	 * @inject
 	 */
-	public $database;
+	private $database;
 
 	/**
 	 * @var bool
 	 */
 	private $active = false;
+
+	/**
+	 * Transaction constructor.
+	 *
+	 * @param Context $database
+	 */
+	function __construct( Context $database )
+	{
+		$this->database = $database;
+	}
 
 	/**
 	 * @param callable $callback

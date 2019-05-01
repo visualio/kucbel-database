@@ -18,10 +18,12 @@ class DatabaseExtension extends CompilerExtension
 	 */
 	function loadConfiguration()
 	{
+		$context = Kucbel\Database\Context::class;
 		$builder = $this->getContainerBuilder();
 
 		$builder->addDefinition( $this->prefix('table'))
 			->setType( Kucbel\Database\Table\Table::class )
+			->setArguments(['database' => "@$context"])
 			->setInject()
 			->addTag('entity');
 
@@ -41,10 +43,14 @@ class DatabaseExtension extends CompilerExtension
 	 */
 	function beforeCompile()
 	{
-		$param = $this->getParameters();
-		$classes = $this->getClasses( $param['scan'], $param['const'] );
-
+		$param = $this->getTableParams();
 		$builder = $this->getContainerBuilder();
+
+		if( $param['scan'] ) {
+			$classes = $this->getTableClasses( $param['scan'], $param['const'] );
+		} else {
+			$classes = null;
+		}
 
 		foreach( $builder->findByType( Nette\Database\Context::class ) as $service ) {
 			$factory = $service->getFactory();
@@ -64,7 +70,7 @@ class DatabaseExtension extends CompilerExtension
 	 * @return array
 	 * @throws ReflectionException
 	 */
-	private function getClasses( array $scan, string $const ) : array
+	private function getTableClasses( array $scan, string $const ) : array
 	{
 		$robot = new RobotLoader;
 		$robot->addDirectory( $scan );
@@ -72,27 +78,21 @@ class DatabaseExtension extends CompilerExtension
 
 		$classes = [];
 
-		foreach( $robot->getIndexedClasses() as $type => $path ) {
-			$class = new ReflectionClass( $type );
+		foreach( $robot->getIndexedClasses() as $class => $void ) {
+			$ref = new ReflectionClass( $class );
 
-			if( !$class->isSubclassOf( Nette\Database\Table\IRow::class ) or !$class->isInstantiable() or !$class->hasConstant( $const ) ) {
+			if( !$ref->isSubclassOf( Nette\Database\Table\IRow::class ) or !$ref->isInstantiable() or !$ref->hasConstant( $const ) ) {
 				continue;
 			}
 
-			$input = new DirectInput([ $const => $class->getConstant( $const ) ], $class->getShortName() );
+			$input = new DirectInput([ $const => $ref->getConstant( $const ) ], $ref->getShortName() );
 
-			$tables = $input->create( $const )
-				->optional()
-				->array()
+			$table = $input->create( $const )
 				->string()
 				->match('~^[a-z][a-z0-9$_]*$~i')
 				->fetch();
 
-			if( $tables ) {
-				foreach( $tables as $table ) {
-					$classes[ $table ] = $type;
-				}
-			}
+			$classes[ $table ] = $class;
 		}
 
 		ksort( $classes );
@@ -103,19 +103,19 @@ class DatabaseExtension extends CompilerExtension
 	/**
 	 * @return array
 	 */
-	private function getParameters() : array
+	private function getTableParams() : array
 	{
-		$input = new ExtensionInput( $this, 'row');
+		$input = new ExtensionInput( $this, 'table');
 
 		$param['scan'] = $input->create('scan')
+			->optional()
 			->array()
-			->min( 1 )
 			->string()
 			->dir( true )
 			->fetch();
 
 		$param['const'] = $input->create('const')
-			->optional('TABLE')
+			->optional( $param['scan'] ? 'TABLE' : null )
 			->string()
 			->match('~^[A-Z][A-Z0-9_]+$~')
 			->fetch();
