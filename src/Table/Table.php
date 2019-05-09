@@ -143,6 +143,8 @@ class Table
 		}
 
 		if( $count !== $queue and $this->options['strict'] ) {
+			$queue -= $count;
+
 			throw new TableException("Table '{$this->name}' didn't insert {$queue} rows.");
 		}
 
