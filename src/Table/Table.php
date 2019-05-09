@@ -108,7 +108,13 @@ class Table
 		$insert = $this->getBuilder()->buildInsertQuery();
 		$insert .= ' ?values';
 
-		return $this->database->query( $insert, $values )->getRowCount();
+		$count = $this->database->query( $insert, $values )->getRowCount();
+
+		if( !$count and $this->options['strict'] ) {
+			throw new TableException("Table '{$this->name}' didn't insert row.");
+		}
+
+		return $count;
 	}
 
 	/**
@@ -117,9 +123,11 @@ class Table
 	 */
 	function insertMany( array $values ) : int
 	{
-		if( count( $values ) > $this->options['insert'] ) {
+		$queue = count( $values );
+
+		if( $queue > $this->options['insert'] ) {
 			$chunks = array_chunk( $values, $this->options['insert'] );
-		} elseif( $values ) {
+		} elseif( $queue ) {
 			$chunks[] = $values;
 		} else {
 			$chunks = [];
@@ -132,6 +140,10 @@ class Table
 
 		foreach( $chunks as $chunk ) {
 			$count += $this->database->query( $insert, $chunk )->getRowCount();
+		}
+
+		if( $count !== $queue and $this->options['strict'] ) {
+			throw new TableException("Table '{$this->name}' didn't insert {$queue} rows.");
 		}
 
 		return $count;
