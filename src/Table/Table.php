@@ -8,7 +8,6 @@ use Kucbel\Database\Row\ActiveRow;
 use Kucbel\Database\Row\MissingRowException;
 use Nette\Database\Table\IRow;
 use Nette\Database\Table\SqlBuilder;
-use Nette\InvalidArgumentException;
 use Nette\SmartObject;
 
 class Table
@@ -16,14 +15,15 @@ class Table
 	use SmartObject;
 
 	/**
-	 * @var SqlBuilder | null
+	 * @var Context
+	 * @inject
 	 */
-	private $builder;
+	public $database;
 
 	/**
-	 * @var Context
+	 * @var string
 	 */
-	protected $database;
+	protected $name;
 
 	/**
 	 * @var array
@@ -34,36 +34,18 @@ class Table
 	];
 
 	/**
-	 * @var string
+	 * @var SqlBuilder | null
 	 */
-	protected $name;
+	private $builder;
 
 	/**
 	 * Table constructor.
 	 *
-	 * @param Context $database
 	 * @param string $name
 	 */
-	function __construct( Context $database, string $name )
+	function __construct( string $name )
 	{
-		$this->database = $database;
 		$this->name = $name;
-	}
-
-	/**
-	 * @param string $name
-	 * @param mixed $value
-	 * @return $this
-	 */
-	function setOption( string $name, $value )
-	{
-		if( gettype( $value ) !== gettype( $this->options[ $name ] ?? null )) {
-			throw new InvalidArgumentException("Invalid data type.");
-		}
-
-		$this->options[ $name ] = $value;
-
-		return $this;
 	}
 
 	/**
@@ -72,6 +54,24 @@ class Table
 	function getName() : string
 	{
 		return $this->name;
+	}
+
+	/**
+	 * @param string $name
+	 * @param mixed $value
+	 */
+	function setOption( string $name, $value )
+	{
+		$this->options[ $name ] = $value;
+	}
+
+	/**
+	 * @param string $name
+	 * @return mixed
+	 */
+	function getOption( string $name )
+	{
+		return $this->options[ $name ] ?? null;
 	}
 
 	/**

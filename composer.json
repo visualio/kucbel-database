@@ -9,6 +9,7 @@
 	}],
 	"require": {
 		"php": "^7.1",
+		"ext-json": "*",
 		"nette/database": "^2.4",
 		"nette/di": "^2.4",
 		"nette/robot-loader": "^3.0",

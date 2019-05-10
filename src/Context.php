@@ -8,10 +8,14 @@ use Nette\Caching\IStorage;
 use Nette\Database\Connection;
 use Nette\Database\IConventions;
 use Nette\Database\IStructure;
-use Nette\Database\Table\ActiveRow;
 
 class Context extends Nette\Database\Context
 {
+	/**
+	 * @var Repository
+	 */
+	protected $deposit;
+
 	/**
 	 * @var Nette\Database\IConventions | null
 	 */
@@ -23,33 +27,21 @@ class Context extends Nette\Database\Context
 	private $storage;
 
 	/**
-	 * @var array | null
-	 */
-	private $classes;
-
-	/**
-	 * @var string
-	 */
-	private $default;
-
-	/**
 	 * Context constructor.
 	 *
-	 * @param Connection $connection
-	 * @param IStructure $structure
-	 * @param IConventions $conventions
-	 * @param IStorage $storage
-	 * @param array $classes
-	 * @param string $default
+	 * @param Repository	$repository
+	 * @param Connection	$connection
+	 * @param IStructure	$structure
+	 * @param IConventions	$conventions
+	 * @param IStorage		$storage
 	 */
-	function __construct( Connection $connection, IStructure $structure, IConventions $conventions = null, IStorage $storage = null, array $classes = null, string $default = null )
+	function __construct( Repository $repository, Connection $connection, IStructure $structure, IConventions $conventions = null, IStorage $storage = null )
 	{
 		parent::__construct( $connection, $structure, $conventions, $storage );
 
+		$this->deposit = $repository;
 		$this->convert = $conventions;
 		$this->storage = $storage;
-		$this->classes = $classes;
-		$this->default = $default ?? ActiveRow::class;
 	}
 
 	/**
@@ -58,15 +50,6 @@ class Context extends Nette\Database\Context
 	 */
 	function table( $table )
 	{
-		return new Selection( $this, $this->convert, $this->storage, $table );
-	}
-
-	/**
-	 * @param string $table
-	 * @return string
-	 */
-	function getRowClass( $table )
-	{
-		return $this->classes[ $table ] ?? $this->default;
+		return new Selection( $this->deposit, $this, $this->convert, $this->storage, $table );
 	}
 }

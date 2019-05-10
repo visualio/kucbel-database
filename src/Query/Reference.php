@@ -9,7 +9,7 @@ trait Reference
 	/**
 	 * @param string $table
 	 * @param string $column
-	 * @return ActiveRow | null
+	 * @return ActiveRow | mixed | null
 	 */
 	abstract function ref( $table, $column = null );
 }

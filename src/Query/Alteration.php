@@ -3,14 +3,20 @@
 namespace Kucbel\Database\Query;
 
 use JsonSerializable;
+use Kucbel\Database\Repository;
 use Nette\Database\Table\ActiveRow;
 
-trait SelectionTrait
+trait Alteration
 {
+	/**
+	 * @var Repository
+	 */
+	protected $deposit;
+
 	/**
 	 * @var string
 	 */
-	protected $rowClass;
+	protected $record;
 
 	/**
 	 * @param array $row
@@ -18,7 +24,7 @@ trait SelectionTrait
 	 */
 	function createRow( array $row )
 	{
-		return new $this->rowClass( $row, $this );
+		return new $this->record( $row, $this );
 	}
 
 	/**
@@ -28,7 +34,7 @@ trait SelectionTrait
 	function createSelectionInstance( $table = null )
 	{
 		/** @var Selection $this */
-		return new Selection( $this->context, $this->conventions, $this->cache ? $this->cache->getStorage() : null, $table ?? $this->name );
+		return new Selection( $this->deposit, $this->context, $this->conventions, $this->cache ? $this->cache->getStorage() : null, $table ?? $this->name );
 	}
 
 	/**
@@ -39,7 +45,7 @@ trait SelectionTrait
 	protected function createGroupedSelectionInstance( $table, $column )
 	{
 		/** @var Selection $this */
-		return new SelectionGroup( $this->context, $this->conventions, $this, $this->cache ? $this->cache->getStorage() : null, $table, $column );
+		return new SelectionGroup(  $this->deposit, $this->context, $this->conventions, $this, $this->cache ? $this->cache->getStorage() : null, $table, $column );
 	}
 
 	/**
@@ -47,19 +53,19 @@ trait SelectionTrait
 	 */
 	function jsonSerialize()
 	{
-		$json = [];
-		$impl = null;
+		$data = [];
+		$json = null;
 
 		foreach( $this as $key => $row ) {
-			if( $impl ?? $impl = $row instanceof JsonSerializable ) {
+			if( $json ?? $json = $row instanceof JsonSerializable ) {
 				/** @var JsonSerializable $row */
-				$json[ $key ] = $row->jsonSerialize();
+				$data[ $key ] = $row->jsonSerialize();
 			} else {
 				/** @var ActiveRow $row */
-				$json[ $key ] = $row->toArray();
+				$data[ $key ] = $row->toArray();
 			}
 		}
 
-		return $json;
+		return $data;
 	}
 }

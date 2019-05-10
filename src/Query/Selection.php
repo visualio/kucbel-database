@@ -3,29 +3,44 @@
 namespace Kucbel\Database\Query;
 
 use JsonSerializable;
-use Kucbel\Database\Context;
+use Kucbel\Database\Repository;
 use Nette\Caching\IStorage;
+use Nette\Database\Context;
 use Nette\Database\IConventions;
 use Nette\Database\Table;
 use Nette\InvalidArgumentException;
 
 class Selection extends Table\Selection implements JsonSerializable
 {
-	use SelectionTrait;
+	use Alteration;
 
 	/**
 	 * Selection constructor.
 	 *
-	 * @param Context $context
-	 * @param IConventions $conventions
-	 * @param IStorage | null $storage
-	 * @param string $table
+	 * @param Repository		$repository
+	 * @param Context			$context
+	 * @param IConventions		$conventions
+	 * @param IStorage | null	$storage
+	 * @param string			$table
 	 */
-	function __construct( Context $context, IConventions $conventions, ?IStorage $storage, string $table )
+	function __construct( Repository $repository, Context $context, IConventions $conventions, ?IStorage $storage, string $table )
 	{
 		parent::__construct( $context, $conventions, $table, $storage );
 
-		$this->rowClass = $context->getRowClass( $table );
+		$this->deposit = $repository;
+		$this->record = $repository->getClass( $table );
+	}
+
+	/**
+	 * @param string $columns
+	 * @param mixed ...$params
+	 * @return $this
+	 */
+	function select( $columns, ...$params )
+	{
+		$this->record = $this->deposit->getDefault();
+
+		return parent::select( $columns, ...$params );
 	}
 
 	/**
@@ -40,11 +55,11 @@ class Selection extends Table\Selection implements JsonSerializable
 		switch( $mode ) {
 			case null:
 				return $word;
-			case 'w%':
+			case '>':
 				return "{$word}%";
-			case '%w':
+			case '<':
 				return "%{$word}";
-			case '%w%':
+			case '*':
 				return "%{$word}%";
 			default:
 				throw new InvalidArgumentException('Unknown mode.');

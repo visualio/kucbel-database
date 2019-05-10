@@ -18,13 +18,13 @@ class DatabaseExtension extends CompilerExtension
 	 */
 	function loadConfiguration()
 	{
-		$context = Kucbel\Database\Context::class;
 		$builder = $this->getContainerBuilder();
+
+		$builder->addDefinition( $this->prefix('registry'))
+			->setType( Kucbel\Database\Repository::class );
 
 		$builder->addDefinition( $this->prefix('table'))
 			->setType( Kucbel\Database\Table\Table::class )
-			->setArguments(['database' => "@$context"])
-			->setInject()
 			->addTag('entity');
 
 		$builder->addDefinition( $this->prefix('table.factory'))
@@ -44,7 +44,6 @@ class DatabaseExtension extends CompilerExtension
 	function beforeCompile()
 	{
 		$param = $this->getTableParams();
-		$builder = $this->getContainerBuilder();
 
 		if( $param['scan'] ) {
 			$classes = $this->getTableClasses( $param['scan'], $param['const'] );
@@ -52,15 +51,23 @@ class DatabaseExtension extends CompilerExtension
 			$classes = null;
 		}
 
+		$builder = $this->getContainerBuilder();
+
+		$builder->getDefinition( $registry = $this->prefix('registry'))
+			->setArguments([ $classes, $param['row'] ]);
+
 		foreach( $builder->findByType( Nette\Database\Context::class ) as $service ) {
 			$factory = $service->getFactory();
-
 			$arguments = $factory->arguments ?? [];
-			$arguments['classes'] = $classes;
-			$arguments['default'] = null;
+
+			array_unshift( $arguments, "@$registry");
 
 			$service->setType( Kucbel\Database\Context::class );
 			$service->setFactory( Kucbel\Database\Context::class, $arguments );
+		}
+
+		foreach( $builder->findByType( Kucbel\Database\Table\Table::class ) as $service ) {
+			$service->setInject();
 		}
 	}
 
@@ -107,6 +114,12 @@ class DatabaseExtension extends CompilerExtension
 	{
 		$input = new ExtensionInput( $this, 'table');
 
+		$param['row'] = $input->create('row')
+			->optional( Kucbel\Database\Row\ActiveRow::class )
+			->string()
+			->impl( Nette\Database\Table\ActiveRow::class, true )
+			->fetch();
+
 		$param['scan'] = $input->create('scan')
 			->optional()
 			->array()
@@ -115,7 +128,7 @@ class DatabaseExtension extends CompilerExtension
 			->fetch();
 
 		$param['const'] = $input->create('const')
-			->optional( $param['scan'] ? 'TABLE' : null )
+			->optional('TABLE')
 			->string()
 			->match('~^[A-Z][A-Z0-9_]+$~')
 			->fetch();
