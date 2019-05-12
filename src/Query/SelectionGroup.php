@@ -42,8 +42,10 @@ class SelectionGroup extends Table\GroupedSelection implements JsonSerializable
 	{
 		if( $columns !== '*' and $columns !== "{$this->name}.*") {
 			$this->record = $this->deposit->getDefault();
-		}
 
-		return parent::select( $columns, ...$params );
+			return parent::select( $columns, ...$params );
+		} else {
+			return Selection::select("{$this->name}.*", ...$params );
+		}
 	}
 }
