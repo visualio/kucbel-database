@@ -133,7 +133,7 @@ class DatabaseExtension extends CompilerExtension
 			->match('~^[A-Z][A-Z0-9_]+$~')
 			->fetch();
 
-		$input->validate();
+		$input->match();
 
 		return $param;
 	}
