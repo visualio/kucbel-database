@@ -38,7 +38,9 @@ class Selection extends Table\Selection implements JsonSerializable
 	 */
 	function select( $columns, ...$params )
 	{
-		$this->record = $this->deposit->getDefault();
+		if( $columns !== '*' and $columns !== "{$this->name}.*") {
+			$this->record = $this->deposit->getDefault();
+		}
 
 		return parent::select( $columns, ...$params );
 	}
