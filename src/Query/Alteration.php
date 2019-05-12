@@ -54,16 +54,17 @@ trait Alteration
 	function jsonSerialize()
 	{
 		$data = [];
-		$json = null;
+		$json = false;
 
+		/** @var Selection $this */
 		foreach( $this as $key => $row ) {
-			if( $json ?? $json = $row instanceof JsonSerializable ) {
-				/** @var JsonSerializable $row */
-				$data[ $key ] = $row->jsonSerialize();
-			} else {
-				/** @var ActiveRow $row */
-				$data[ $key ] = $row->toArray();
-			}
+			$json = $row instanceof JsonSerializable;
+			break;
+		}
+
+		/** @var JsonSerializable | ActiveRow $row */
+		foreach( $this as $key => $row ) {
+			$data[ $key ] = $json ? $row->jsonSerialize() : $row->toArray();
 		}
 
 		return $data;

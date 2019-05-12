@@ -117,7 +117,7 @@ class DatabaseExtension extends CompilerExtension
 		$param['row'] = $input->create('row')
 			->optional( Kucbel\Database\Row\ActiveRow::class )
 			->string()
-			->impl( Nette\Database\Table\ActiveRow::class, true )
+			->impl( Nette\Database\Table\IRow::class )
 			->fetch();
 
 		$param['scan'] = $input->create('scan')

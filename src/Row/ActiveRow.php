@@ -9,6 +9,7 @@ class ActiveRow extends Nette\Database\Table\ActiveRow implements JsonSerializab
 {
 	/**
 	 * @return mixed
+	 * @internal
 	 */
 	final function jsonSerialize()
 	{

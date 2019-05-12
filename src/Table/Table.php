@@ -34,18 +34,18 @@ class Table
 	];
 
 	/**
-	 * @var SqlBuilder | null
-	 */
-	private $builder;
-
-	/**
 	 * Table constructor.
 	 *
 	 * @param string $name
+	 * @param array $options
 	 */
-	function __construct( string $name )
+	function __construct( string $name, array $options = null )
 	{
 		$this->name = $name;
+
+		if( $options ) {
+			$this->options = $options + $this->options;
+		}
 	}
 
 	/**
@@ -57,43 +57,17 @@ class Table
 	}
 
 	/**
-	 * @param string $name
-	 * @param mixed $value
-	 */
-	function setOption( string $name, $value )
-	{
-		$this->options[ $name ] = $value;
-	}
-
-	/**
-	 * @param string $name
-	 * @return mixed
-	 */
-	function getOption( string $name )
-	{
-		return $this->options[ $name ] ?? null;
-	}
-
-	/**
-	 * @return SqlBuilder
-	 */
-	function getBuilder() : SqlBuilder
-	{
-		return $this->builder ?? $this->builder = new SqlBuilder( $this->name, $this->database );
-	}
-
-	/**
 	 * @param array $values
 	 * @return ActiveRow
 	 * @throws TableException
 	 */
 	function insert( array $values )
 	{
-		/** @var ActiveRow|IRow|int $row */
+		/** @var ActiveRow | mixed $row */
 		$row = $this->database->table( $this->name )->insert( $values );
 
 		if( !$row instanceof IRow ) {
-			throw new TableException("Table '{$this->name}' didn't return inserted row.");
+			throw new TableException("Table '{$this->name}' didn't insert or return row.");
 		}
 
 		return $row;
@@ -105,7 +79,7 @@ class Table
 	 */
 	function insertOne( array $values ) : int
 	{
-		$insert = $this->getBuilder()->buildInsertQuery();
+		$insert = $this->builder()->buildInsertQuery();
 		$insert .= ' ?values';
 
 		$count = $this->database->query( $insert, $values )->getRowCount();
@@ -133,9 +107,9 @@ class Table
 			$chunks = [];
 		}
 
-		$insert = $this->getBuilder()->buildInsertQuery();
+		$insert = $this->builder()->buildInsertQuery();
 		$insert .= ' ?values';
-		
+
 		$count = 0;
 
 		foreach( $chunks as $chunk ) {
@@ -163,7 +137,7 @@ class Table
 		$ok = $row->update( $values );
 
 		if( !$ok and $this->options['strict'] ) {
-			throw new TableException("Table '{$this->name}' didn't update row #{$id}, just so you know.");
+			throw new TableException("Table '{$this->name}' didn't update row #{$id}.");
 		}
 
 		return $ok;
@@ -192,7 +166,7 @@ class Table
 		$ok = $row->delete();
 
 		if( !$ok and $this->options['strict'] ) {
-			throw new TableException("Table '{$this->name}' didn't delete row #{$id}, just so you know.");
+			throw new TableException("Table '{$this->name}' didn't delete row #{$id}.");
 		}
 
 		return $ok;
@@ -255,7 +229,7 @@ class Table
 
 		$where = implode(' = ? AND ', (array) $query->getPrimary() );
 
-		/** @var ActiveRow|false $row */
+		/** @var ActiveRow | false $row */
 		$row = $query->where("{$where} = ?", $key, ...$keys )->fetch();
 
 		return $row ? $row : null;
@@ -269,7 +243,7 @@ class Table
 	 */
 	function findOne( array $where = null, array $order = null, bool $limit = false )
 	{
-		/** @var ActiveRow|false $row */
+		/** @var ActiveRow | false $row */
 		$row = $this->query( $where, $order, $limit ? 1 : null )->fetch();
 
 		return $row ? $row : null;
@@ -384,21 +358,10 @@ class Table
 	}
 
 	/**
-	 * @return void
+	 * @return SqlBuilder
 	 */
-	function lock() : void
+	protected function builder() : SqlBuilder
 	{
-		$driver = $this->database->getConnection()->getSupplementalDriver();
-		$name = $driver->delimite( $this->name );
-
-		$this->database->query("LOCK TABLES {$name} WRITE");
-	}
-
-	/**
-	 * @return void
-	 */
-	function unlock() : void
-	{
-		$this->database->query('UNLOCK TABLES');
+		return new SqlBuilder( $this->name, $this->database );
 	}
 }
