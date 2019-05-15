@@ -20,7 +20,7 @@ class DatabaseExtension extends CompilerExtension
 	{
 		$builder = $this->getContainerBuilder();
 
-		$builder->addDefinition( $this->prefix('registry'))
+		$builder->addDefinition( $this->prefix('repo'))
 			->setType( Kucbel\Database\Repository::class );
 
 		$builder->addDefinition( $this->prefix('table'))
@@ -53,17 +53,14 @@ class DatabaseExtension extends CompilerExtension
 
 		$builder = $this->getContainerBuilder();
 
-		$builder->getDefinition( $registry = $this->prefix('registry'))
+		$builder->getDefinition( $repository = $this->prefix('repo'))
 			->setArguments([ $classes, $param['row'] ]);
 
 		foreach( $builder->findByType( Nette\Database\Context::class ) as $service ) {
 			$factory = $service->getFactory();
-			$arguments = $factory->arguments ?? [];
-
-			array_unshift( $arguments, "@$registry");
 
 			$service->setType( Kucbel\Database\Context::class );
-			$service->setFactory( Kucbel\Database\Context::class, $arguments );
+			$service->setFactory( Kucbel\Database\Context::class, array_merge(["@$repository"], $factory->arguments ?? [] ));
 		}
 
 		foreach( $builder->findByType( Kucbel\Database\Table\Table::class ) as $service ) {

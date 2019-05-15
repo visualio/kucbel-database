@@ -37,6 +37,10 @@ class Repository
 	 */
 	function getClass( string $table ) : string
 	{
+		if( $index = strrpos( $table, '.')) {
+			$table = substr( $table, $index + 1 );
+		}
+
 		return $this->classes[ $table ] ?? $this->default;
 	}
 
