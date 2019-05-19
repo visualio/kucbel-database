@@ -18,6 +18,8 @@ class DatabaseExtension extends CompilerExtension
 	 */
 	function loadConfiguration()
 	{
+		$entity = $this->compiler->getExtensions('Kucbel\Entity\DI\EntityExtension');
+
 		$builder = $this->getContainerBuilder();
 
 		$builder->addDefinition( $this->prefix('repo'))
@@ -25,13 +27,14 @@ class DatabaseExtension extends CompilerExtension
 
 		$builder->addDefinition( $this->prefix('table'))
 			->setType( Kucbel\Database\Table\Table::class )
+			->setDynamic( $entity ? false : true )
 			->addTag('entity');
 
 		$builder->addDefinition( $this->prefix('table.factory'))
 			->setType( Kucbel\Database\Table\TableFactory::class )
 			->setInject();
 
-		$builder->addDefinition( $this->prefix('utils.trans'))
+		$builder->addDefinition( $this->prefix('trans'))
 			->setType( Kucbel\Database\Utils\Transaction::class )
 			->setInject();
 	}
