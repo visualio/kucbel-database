@@ -5,6 +5,7 @@ namespace Kucbel\Database\Utils;
 use Nette\Database\Context;
 use Nette\SmartObject;
 use Throwable;
+use Tracy\ILogger;
 
 class Transaction
 {
@@ -16,6 +17,11 @@ class Transaction
 	private $database;
 
 	/**
+	 * @var ILogger | null
+	 */
+	private $logger;
+
+	/**
 	 * @var bool
 	 */
 	private $active = false;
@@ -24,10 +30,12 @@ class Transaction
 	 * Transaction constructor.
 	 *
 	 * @param Context $database
+	 * @param ILogger $logger
 	 */
-	function __construct( Context $database )
+	function __construct( Context $database, ILogger $logger = null )
 	{
 		$this->database = $database;
+		$this->logger = $logger;
 	}
 
 	/**
@@ -43,6 +51,10 @@ class Transaction
 			$result = call_user_func( $callback, ...$arguments );
 			$this->commit();
 		} catch( Throwable $ex ) {
+			if( $this->logger ) {
+				$this->logger->log( $ex, ILogger::EXCEPTION );
+			}
+
 			if( $this->active ) {
 				$this->revert();
 			}
