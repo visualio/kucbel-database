@@ -17,7 +17,7 @@ class Transaction
 	private $database;
 
 	/**
-	 * @var ILogger | null
+	 * @var ILogger
 	 */
 	private $logger;
 
@@ -32,10 +32,20 @@ class Transaction
 	 * @param Context $database
 	 * @param ILogger $logger
 	 */
-	function __construct( Context $database, ILogger $logger = null )
+	function __construct( Context $database, ILogger $logger )
 	{
 		$this->database = $database;
 		$this->logger = $logger;
+	}
+
+	/**
+	 * Transaction destructor.
+	 */
+	function __destruct()
+	{
+		if( $this->active ) {
+			$this->revert();
+		}
 	}
 
 	/**
@@ -50,19 +60,15 @@ class Transaction
 			$this->begin();
 			$result = call_user_func( $callback, ...$arguments );
 			$this->commit();
-		} catch( Throwable $ex ) {
-			if( $this->logger ) {
-				$this->logger->log( $ex, ILogger::EXCEPTION );
-			}
 
+			return $result;
+		} catch( Throwable $error ) {
 			if( $this->active ) {
 				$this->revert();
 			}
 
-			throw $ex;
+			throw $error;
 		}
-
-		return $result;
 	}
 
 	/**
@@ -94,7 +100,7 @@ class Transaction
 	/**
 	 * @throws TransactionException
 	 */
-	function revert()
+	function revert() : void
 	{
 		if( !$this->active ) {
 			throw new TransactionException("Transaction wasn't started.");
@@ -107,10 +113,19 @@ class Transaction
 	/**
 	 * @throws TransactionException
 	 */
-	function ensure()
+	function ensure() : void
 	{
 		if( !$this->active ) {
 			throw new TransactionException("Transaction is required.");
 		}
+	}
+
+	/**
+	 * @param Throwable $error
+	 * @param string $level
+	 */
+	function log( Throwable $error, string $level = ILogger::EXCEPTION )
+	{
+		$this->logger->log( $error, $level );
 	}
 }
