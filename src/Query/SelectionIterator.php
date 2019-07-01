@@ -18,11 +18,6 @@ class SelectionIterator implements Countable, Iterator
 	private $query;
 
 	/**
-	 * @var ActiveRow[]
-	 */
-	private $batch = [];
-
-	/**
 	 * @var int
 	 */
 	private $limit;
@@ -40,7 +35,7 @@ class SelectionIterator implements Countable, Iterator
 	/**
 	 * @var bool
 	 */
-	private $abort = true;
+	private $exist = false;
 
 	/**
 	 * SelectionIterator constructor.
@@ -69,21 +64,15 @@ class SelectionIterator implements Countable, Iterator
 	 */
 	protected function fetch() : void
 	{
-		$query = $this->query->limit( $this->limit, $this->index );
+		if( $this->exist ) {
+			$this->query->limit( $this->limit, $this->index );
+			$this->query->rewind();
 
-		$batch = [];
-		$count = 0;
+			$this->index += $this->limit;
 
-		foreach( $query as $id => $row ) {
-			$batch[ $id ] = $row;
-			$count++;
-		}
-
-		$this->batch = $batch;
-		$this->index += $count;
-
-		if( $this->limit !== $count ) {
-			$this->abort = true;
+			if( $this->query->count() !== $this->limit ) {
+				$this->exist = false;
+			}
 		}
 	}
 
@@ -93,7 +82,7 @@ class SelectionIterator implements Countable, Iterator
 	function rewind() : void
 	{
 		$this->index = 0;
-		$this->abort = false;
+		$this->exist = true;
 
 		$this->fetch();
 	}
@@ -103,9 +92,9 @@ class SelectionIterator implements Countable, Iterator
 	 */
 	function next() : void
 	{
-		$value = next( $this->batch );
+		$this->query->next();
 
-		if( !$value and !$this->abort ) {
+		if( !$this->query->valid() ) {
 			$this->fetch();
 		}
 	}
@@ -115,7 +104,7 @@ class SelectionIterator implements Countable, Iterator
 	 */
 	function valid() : bool
 	{
-		return key( $this->batch ) !== null;
+		return $this->query->valid();
 	}
 
 	/**
@@ -123,15 +112,15 @@ class SelectionIterator implements Countable, Iterator
 	 */
 	function key()
 	{
-		return key( $this->batch );
+		return $this->query->key();
 	}
 
 	/**
-	 * @return ActiveRow
+	 * @return ActiveRow | false
 	 */
 	function current()
 	{
-		return current( $this->batch );
+		return $this->query->current();
 	}
 
 	/**
