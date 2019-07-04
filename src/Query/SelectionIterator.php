@@ -73,6 +73,8 @@ class SelectionIterator implements Countable, Iterator
 			if( $this->query->count() !== $this->limit ) {
 				$this->exist = false;
 			}
+		} else {
+			$this->query->limit( null );
 		}
 	}
 
