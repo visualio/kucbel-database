@@ -6,6 +6,7 @@ use Kucbel\Database\Context;
 use Kucbel\Database\Query\Selection;
 use Kucbel\Database\Row\ActiveRow;
 use Kucbel\Database\Row\MissingRowException;
+use Nette\Database\ResultSet;
 use Nette\Database\Table\IRow;
 use Nette\Database\Table\SqlBuilder;
 use Nette\SmartObject;
@@ -126,12 +127,12 @@ class Table
 	}
 
 	/**
-	 * @param array $values
 	 * @param ActiveRow $row
+	 * @param array $values
 	 * @return bool
 	 * @throws TableException
 	 */
-	function update( array $values, ActiveRow $row ) : bool
+	function update( ActiveRow $row, array $values ) : bool
 	{
 		$id = $row->getSignature();
 		$ok = $row->update( $values );
@@ -152,7 +153,7 @@ class Table
 	 */
 	function updateMany( array $values, array $where = null, array $order = null, int $limit = null ) : int
 	{
-		return $this->query( $where, $order, $limit )->update( $values );
+		return $this->select( $where, $order, $limit )->update( $values );
 	}
 
 	/**
@@ -180,7 +181,7 @@ class Table
 	 */
 	function deleteMany( array $where = null, array $order = null, int $limit = null ) : int
 	{
-		return $this->query( $where, $order, $limit )->delete();
+		return $this->select( $where, $order, $limit )->delete();
 	}
 
 	/**
@@ -244,7 +245,7 @@ class Table
 	function findOne( array $where = null, array $order = null, bool $limit = false )
 	{
 		/** @var ActiveRow | false $row */
-		$row = $this->query( $where, $order, $limit ? 1 : null )->fetch();
+		$row = $this->select( $where, $order, $limit ? 1 : null )->fetch();
 
 		return $row ? $row : null;
 	}
@@ -258,7 +259,7 @@ class Table
 	 */
 	function findMany( array $where = null, array $order = null, int $limit = null, int $offset = null )
 	{
-		return $this->query( $where, $order, $limit, $offset )->fetchAll();
+		return $this->select( $where, $order, $limit, $offset )->fetchAll();
 	}
 
 	/**
@@ -267,7 +268,7 @@ class Table
 	 */
 	function findAll( array $order = null )
 	{
-		return $this->query( null, $order )->fetchAll();
+		return $this->select( null, $order )->fetchAll();
 	}
 
 	/**
@@ -277,7 +278,7 @@ class Table
 	 * @param int $offset
 	 * @return Selection
 	 */
-	function query( array $where = null, array $order = null, int $limit = null, int $offset = null )
+	function select( array $where = null, array $order = null, int $limit = null, int $offset = null )
 	{
 		$query = $this->database->table( $this->name );
 
@@ -319,7 +320,46 @@ class Table
 	 */
 	function count( array $where = null, string $column = '*') : int
 	{
-		return $this->query( $where )->count( $column );
+		return $this->select( $where )->count( $column );
+	}
+
+	/**
+	 * @param string $command
+	 * @param mixed ...$arguments
+	 * @return ResultSet
+	 */
+	function query( string $command, ...$arguments )
+	{
+		return $this->database->query( $command, ...$arguments );
+	}
+
+	/**
+	 * @param bool $keys
+	 */
+	function purge( bool $keys = true ) : void
+	{
+		$name = $this->escape( $this->name );
+
+		if( $keys ) {
+			$this->database->query("SET FOREIGN_KEY_CHECKS = 0");
+		}
+
+		$this->database->query("TRUNCATE {$name}");
+
+		if( $keys ) {
+			$this->database->query("SET FOREIGN_KEY_CHECKS = 1");
+		}
+	}
+
+	/**
+	 * @param string $name
+	 * @return string
+	 */
+	function escape( string $name ) : string
+	{
+		$driver = $this->database->getConnection()->getSupplementalDriver();
+
+		return $driver->delimite( $name );
 	}
 
 	/**
@@ -331,25 +371,42 @@ class Table
 	{
 		$key = $row->getPrimary();
 
-		if( is_array( $key )) {
-			throw new TableException("Unable to reference check for compound key.");
+		if( !is_scalar( $key ) and !is_object( $key )) {
+			throw new TableException("Scalar primary key required.");
+		}
+
+		if( $skip ) {
+			$skip = array_flip( $skip );
 		}
 
 		$tables = $this->database->getStructure()->getHasManyReference( $this->name );
 
-		foreach( $tables as $name => $columns ) {
-			if( in_array( $name, $skip, true )) {
+		foreach( $tables as $table => $columns ) {
+			if( array_key_exists( $table, $skip )) {
 				continue;
 			}
 
-			$param = array_fill( 0, count( $columns ), $key );
-			$where = implode('= ? OR ', $columns );
+			$param =
+			$where = null;
 
-			$count = $this->database->table( $name )
-				->where("{$where} = ?", ...$param )
+			foreach( $columns as $column ) {
+				if( array_key_exists("{$table}.{$column}", $skip )) {
+					continue;
+				}
+
+				$where[] = "{$column} = ?";
+				$param[] = $key;
+			}
+
+			if( !$where ) {
+				continue;
+			}
+
+			$exist = $this->database->table( $table )
+				->where( implode(' OR ', $where ), ...$param )
 				->count('*');
 
-			if( $count ) {
+			if( $exist ) {
 				return true;
 			}
 		}

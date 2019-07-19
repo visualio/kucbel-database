@@ -2,13 +2,13 @@
 
 namespace Kucbel\Database\Query;
 
-use Iterator;
 use Countable;
+use Iterator;
 use Kucbel\Database\Row\ActiveRow;
 use Nette\InvalidArgumentException;
 use Nette\SmartObject;
 
-class SelectionIterator implements Countable, Iterator
+class Paginator implements Countable, Iterator
 {
 	use SmartObject;
 
@@ -38,7 +38,7 @@ class SelectionIterator implements Countable, Iterator
 	private $exist = false;
 
 	/**
-	 * SelectionIterator constructor.
+	 * Paginator constructor.
 	 *
 	 * @param Selection $query
 	 * @param int       $limit
@@ -49,7 +49,7 @@ class SelectionIterator implements Countable, Iterator
 			throw new InvalidArgumentException;
 		}
 
-		if( !strpos( $query->getSql(), 'ORDER BY')) {
+		if( !$query->getSqlBuilder()->getOrder() ) {
 			$primary = (array) $query->getPrimary();
 
 			$query->order( implode(', ', $primary ));
