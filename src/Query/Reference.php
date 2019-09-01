@@ -2,7 +2,8 @@
 
 namespace Kucbel\Database\Query;
 
-use Nette\Database\Table\ActiveRow;
+use Kucbel\Database\Row\ActiveRow;
+use Nette;
 
 trait Reference
 {
@@ -11,5 +12,5 @@ trait Reference
 	 * @param string $column
 	 * @return ActiveRow | mixed | null
 	 */
-	abstract function ref( $table, $column = null );
+	abstract function ref( $table, $column = null ) : ?Nette\Database\Table\IRow;
 }

@@ -4,7 +4,7 @@ namespace Kucbel\Database;
 
 use RuntimeException;
 
-class Exception extends RuntimeException
+abstract class Exception extends RuntimeException
 {
 
 }

@@ -3,13 +3,15 @@
 namespace Kucbel\Database\DI;
 
 use Kucbel;
-use Kucbel\Scalar\Input\DirectInput;
+use Kucbel\Entity\DI\EntityExtension;
 use Kucbel\Scalar\Input\ExtensionInput;
+use Kucbel\Scalar\Input\MixedInput;
 use Nette;
 use Nette\DI\CompilerExtension;
+use Nette\DI\Definitions\ServiceDefinition;
+use Nette\InvalidStateException;
 use Nette\Loaders\RobotLoader;
 use ReflectionClass;
-use ReflectionException;
 
 class DatabaseExtension extends CompilerExtension
 {
@@ -18,123 +20,127 @@ class DatabaseExtension extends CompilerExtension
 	 */
 	function loadConfiguration()
 	{
-		$entity = $this->compiler->getExtensions('Kucbel\Entity\DI\EntityExtension');
-
+		$param = $this->getParameters();
 		$builder = $this->getContainerBuilder();
 
 		$builder->addDefinition( $this->prefix('repo'))
-			->setType( Kucbel\Database\Repository::class );
-
-		$builder->addDefinition( $this->prefix('table'))
-			->setType( Kucbel\Database\Table\Table::class )
-			->setDynamic( $entity ? false : true )
-			->addTag('entity');
-
-		$builder->addDefinition( $this->prefix('table.factory'))
-			->setType( Kucbel\Database\Table\TableFactory::class )
-			->setInject();
+			->setType( Kucbel\Database\Repository::class )
+			->setArguments([ $param['classes'], $param['default'] ]);
 
 		$builder->addDefinition( $this->prefix('trans'))
-			->setType( Kucbel\Database\Utils\Transaction::class )
-			->setInject();
+			->setType( Kucbel\Database\Utils\Transaction::class );
+
+		$builder->addDefinition( $this->prefix('table.factory'))
+			->setType( Kucbel\Database\Table\TableFactory::class );
+
+		if( $this->compiler->getExtensions( EntityExtension::class )) {
+			$builder->addDefinition( $this->prefix('table'))
+				->setType( Kucbel\Database\Table\Table::class )
+				->addTag('entity')
+				->addTag('nette.inject');
+		}
 	}
 
 	/**
 	 * Compile
-	 *
-	 * @throws ReflectionException
 	 */
 	function beforeCompile()
 	{
-		$param = $this->getTableParams();
-
-		if( $param['scan'] ) {
-			$classes = $this->getTableClasses( $param['scan'], $param['const'] );
-		} else {
-			$classes = null;
-		}
+		$arguments[] = $this->prefix('@repo');
 
 		$builder = $this->getContainerBuilder();
 
-		$builder->getDefinition( $repository = $this->prefix('repo'))
-			->setArguments([ $classes, $param['row'] ]);
-
 		foreach( $builder->findByType( Nette\Database\Context::class ) as $service ) {
-			$factory = $service->getFactory();
-
-			$service->setType( Kucbel\Database\Context::class );
-			$service->setFactory( Kucbel\Database\Context::class, array_merge(["@$repository"], $factory->arguments ?? [] ));
-		}
-
-		foreach( $builder->findByType( Kucbel\Database\Table\Table::class ) as $service ) {
-			$service->setInject();
-		}
-	}
-
-	/**
-	 * @param array $scan
-	 * @param string $const
-	 * @return array
-	 * @throws ReflectionException
-	 */
-	private function getTableClasses( array $scan, string $const ) : array
-	{
-		$robot = new RobotLoader;
-		$robot->addDirectory( $scan );
-		$robot->rebuild();
-
-		$classes = [];
-
-		foreach( $robot->getIndexedClasses() as $class => $void ) {
-			$ref = new ReflectionClass( $class );
-
-			if( !$ref->isSubclassOf( Nette\Database\Table\IRow::class ) or !$ref->isInstantiable() or !$ref->hasConstant( $const ) ) {
+			if( !$service instanceof ServiceDefinition ) {
 				continue;
 			}
 
-			$input = new DirectInput([ $const => $ref->getConstant( $const ) ], $ref->getShortName() );
+			$factory = $service->getFactory();
 
-			$table = $input->create( $const )
-				->string()
-				->match('~^[a-z][a-z0-9$_]*$~i')
-				->fetch();
-
-			$classes[ $table ] = $class;
+			$service->setType( Kucbel\Database\Context::class );
+			$service->setFactory( Kucbel\Database\Context::class, array_merge( $arguments, $factory->arguments ));
 		}
-
-		ksort( $classes );
-
-		return $classes;
 	}
 
 	/**
 	 * @return array
 	 */
-	private function getTableParams() : array
+	private function getParameters() : array
 	{
 		$input = new ExtensionInput( $this, 'table');
 
-		$param['row'] = $input->create('row')
-			->optional( Kucbel\Database\Row\ActiveRow::class )
-			->string()
-			->impl( Nette\Database\Table\IRow::class )
-			->fetch();
-
-		$param['scan'] = $input->create('scan')
+		$folders = $input->create('scan')
 			->optional()
 			->array()
 			->string()
 			->dir( true )
 			->fetch();
 
-		$param['const'] = $input->create('const')
+		$const = $input->create('const')
 			->optional('TABLE')
 			->string()
 			->match('~^[A-Z][A-Z0-9_]+$~')
 			->fetch();
 
+		if( $folders ) {
+			$param['classes'] = $this->getClasses( $const, ...$folders );
+		} else {
+			$param['classes'] = [];
+		}
+
+		$input = $input->section('row');
+
+		$param['default'] = $input->create('default')
+			->optional( Kucbel\Database\Row\ActiveRow::class )
+			->string()
+			->impl( Nette\Database\Table\ActiveRow::class )
+			->fetch();
+
 		$input->match();
 
 		return $param;
+	}
+
+	/**
+	 * @param string $const
+	 * @param string ...$folders
+	 * @return array
+	 * @throws
+	 */
+	private function getClasses( string $const, string ...$folders ) : array
+	{
+		$robot = new RobotLoader;
+		$robot->addDirectory( ...$folders );
+		$robot->rebuild();
+
+		$parent = Nette\Database\Table\ActiveRow::class;
+		$classes = [];
+
+		foreach( $robot->getIndexedClasses() as $type => $file ) {
+			$class = new ReflectionClass( $type );
+
+			if( !$class->isSubclassOf( $parent ) or !$class->hasConstant( $const ) or !$class->isInstantiable() ) {
+				continue;
+			}
+
+			$input = new MixedInput([ $const => $class->getConstant( $const ) ], $class->getShortName() );
+
+			$table = $input->create( $const )
+				->string()
+				->match('~^[a-z][a-z0-9_]*$~i')
+				->fetch();
+
+			$exist = $classes[ $table ] ?? null;
+
+			if( $exist ) {
+				throw new InvalidStateException("Duplicate table '$table' mapped in rows '$exist' and '$class'.");
+			}
+
+			$classes[ $table ] = $class->getName();
+		}
+
+		ksort( $classes );
+
+		return $classes;
 	}
 }

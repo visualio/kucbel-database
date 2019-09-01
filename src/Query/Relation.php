@@ -2,14 +2,14 @@
 
 namespace Kucbel\Database\Query;
 
-use Nette\Database\Table\Selection;
+use Nette;
 
 trait Relation
 {
 	/**
 	 * @param string $table
 	 * @param string $column
-	 * @return Selection
+	 * @return SelectionGroup
 	 */
-	abstract function related( $table, $column = null );
+	abstract function related( $table, $column = null ) : Nette\Database\Table\GroupedSelection;
 }

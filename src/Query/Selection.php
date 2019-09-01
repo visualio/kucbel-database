@@ -42,7 +42,9 @@ class Selection extends Table\Selection implements JsonSerializable
 			$this->record = $this->deposit->getDefault();
 		}
 
-		return parent::select( $columns, ...$params );
+		parent::select( $columns, ...$params );
+
+		return $this;
 	}
 
 	/**
@@ -61,10 +63,10 @@ class Selection extends Table\Selection implements JsonSerializable
 				return "{$word}%";
 			case '<':
 				return "%{$word}";
-			case '*':
+			case '?':
 				return "%{$word}%";
 			default:
-				throw new InvalidArgumentException('Unknown mode.');
+				throw new InvalidArgumentException("Unknown flag '{$mode}'.");
 		}
 	}
 }

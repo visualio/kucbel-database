@@ -17,12 +17,12 @@ class Context extends Nette\Database\Context
 	protected $deposit;
 
 	/**
-	 * @var Nette\Database\IConventions | null
+	 * @var IConventions | null
 	 */
 	private $convert;
 
 	/**
-	 * @var Nette\Caching\IStorage | null
+	 * @var IStorage | null
 	 */
 	private $storage;
 
@@ -48,7 +48,7 @@ class Context extends Nette\Database\Context
 	 * @param string $table
 	 * @return Selection
 	 */
-	function table( $table )
+	function table( string $table ) : Nette\Database\Table\Selection
 	{
 		return new Selection( $this->deposit, $this, $this->convert, $this->storage, $table );
 	}
