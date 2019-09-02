@@ -12,5 +12,5 @@ trait Reference
 	 * @param string $column
 	 * @return ActiveRow | mixed | null
 	 */
-	abstract function ref( $table, $column = null ) : ?Nette\Database\Table\IRow;
+	abstract function ref( string $table, string $column = null ) : ?Nette\Database\Table\IRow;
 }

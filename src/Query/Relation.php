@@ -11,5 +11,5 @@ trait Relation
 	 * @param string $column
 	 * @return SelectionGroup
 	 */
-	abstract function related( $table, $column = null ) : Nette\Database\Table\GroupedSelection;
+	abstract function related( string $table, string $column = null ) : Nette\Database\Table\GroupedSelection;
 }
