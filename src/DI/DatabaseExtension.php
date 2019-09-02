@@ -111,6 +111,7 @@ class DatabaseExtension extends CompilerExtension
 	{
 		$robot = new RobotLoader;
 		$robot->addDirectory( ...$folders );
+		$robot->reportParseErrors( false );
 		$robot->rebuild();
 
 		$parent = Nette\Database\Table\ActiveRow::class;
