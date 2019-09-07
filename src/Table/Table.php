@@ -124,7 +124,7 @@ class Table
 	 * @param int $offset
 	 * @return ActiveRow[]
 	 */
-	function findMany( array $where = null, array $order = null, int $limit = null, int $offset = null ) : iterable
+	function findMany( array $where = null, array $order = null, int $limit = null, int $offset = null ) : array
 	{
 		return $this->select( $where, $order, $limit, $offset )->fetchAll();
 	}
@@ -133,7 +133,7 @@ class Table
 	 * @param array $order
 	 * @return ActiveRow[]
 	 */
-	function findAll( array $order = null ) : iterable
+	function findAll( array $order = null ) : array
 	{
 		return $this->select( null, $order )->fetchAll();
 	}
@@ -143,19 +143,17 @@ class Table
 	 * @param string ...$skip
 	 * @return ActiveRow[]
 	 */
-	function findRef( ActiveRow $row, string ...$skip ) : iterable
+	function findRef( ActiveRow $row, string ...$skip ) : array
 	{
-		$key = $row->getPrimary();
+		$value = $row->getPrimary();
 
-		if( !is_scalar( $key ) and !is_object( $key )) {
+		if( is_array( $value )) {
 			throw new InvalidArgumentException("Row must have scalar primary key.");
 		}
 
-		if( $skip ) {
-			$skip = array_flip( $skip );
-		}
-
 		$tables = $this->database->getStructure()->getHasManyReference( $this->name );
+
+		$skip = array_flip( $skip );
 		$rows = [];
 
 		foreach( $tables as $table => $columns ) {
@@ -172,7 +170,7 @@ class Table
 				}
 
 				$where[] = "{$column} = ?";
-				$param[] = $key;
+				$param[] = $value;
 			}
 
 			if( !$where ) {
@@ -190,6 +188,71 @@ class Table
 		}
 
 		return $rows;
+	}
+
+	/**
+	 * @param Selection $query
+	 * @param array $array
+	 * @return array
+	 */
+	protected function list( Selection $query, array $array ) : array
+	{
+		if( is_string( $value = current( $array ))) {
+			$value = function( ActiveRow $row ) use( $value ) {
+				return $row->$value;
+			};
+		} else {
+			throw new InvalidArgumentException("Array must have string column name.");
+		}
+
+		if( is_int( $index = key( $array ))) {
+			$count = 0;
+			$index = function() use( &$count ) {
+				return $count++;
+			};
+		} else {
+			$index = function( ActiveRow $row ) use( $index ) {
+				return $row->$index;
+			};
+		}
+
+		$list = [];
+
+		foreach( $query as $row ) {
+			$key = $index( $row );
+			$col = $value( $row );
+
+			$list[ $key ?? ''] = $col;
+		}
+
+		return $list;
+	}
+
+	/**
+	 * @param array $array
+	 * @param array $where
+	 * @param array $order
+	 * @param int $limit
+	 * @param int $offset
+	 * @return array
+	 */
+	function listMany( array $array, array $where = null, array $order = null, int $limit = null, int $offset = null ) : array
+	{
+		$query = $this->select( $where, $order, $limit, $offset );
+
+		return $this->list( $query, $array );
+	}
+
+	/**
+	 * @param array $array
+	 * @param array $order
+	 * @return array
+	 */
+	function listAll( array $array, array $order = null ) : array
+	{
+		$query = $this->select( null, $order );
+
+		return $this->list( $query, $array );
 	}
 
 	/**
@@ -384,7 +447,7 @@ class Table
 	 * @param string $name
 	 * @return string
 	 */
-	function escape( string $name ) : string
+	protected function escape( string $name ) : string
 	{
 		$driver = $this->database->getConnection()->getSupplementalDriver();
 
