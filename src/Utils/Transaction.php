@@ -58,7 +58,7 @@ class Transaction
 	{
 		try {
 			$this->begin();
-			$result = call_user_func( $callback, ...$arguments );
+			$result = $callback( ...$arguments );
 			$this->commit();
 
 			return $result;
