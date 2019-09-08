@@ -126,18 +126,23 @@ class DatabaseExtension extends CompilerExtension
 
 			$input = new MixedInput([ $const => $class->getConstant( $const ) ], $class->getShortName() );
 
-			$table = $input->create( $const )
+			$tables = $input->create( $const )
+				->array()
+				->count( 1, null )
 				->string()
 				->match('~^[a-z][a-z0-9_]*$~i')
 				->fetch();
 
-			$exist = $classes[ $table ] ?? null;
+			foreach( $tables as $table ) {
+				$exist = $classes[ $table ] ?? null;
 
-			if( $exist ) {
-				throw new InvalidStateException("Duplicate table '$table' mapped in rows '$exist' and '$class'.");
+				if( $exist ) {
+					throw new InvalidStateException("Duplicate table '$table' mapped in rows '$exist' and '$class'.");
+				}
+
+				$classes[ $table ] = $class->getName();
 			}
 
-			$classes[ $table ] = $class->getName();
 		}
 
 		ksort( $classes );
