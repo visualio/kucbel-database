@@ -32,7 +32,7 @@ class Paginator implements Countable, Iterator
 	/**
 	 * @var int
 	 */
-	private $queue = 0;
+	private $final = 0;
 
 	/**
 	 * @var int | null
@@ -86,21 +86,31 @@ class Paginator implements Countable, Iterator
 	{
 		if( !$this->limit ) {
 			$fetch = $this->fetch;
-		} elseif(( $fetch = $this->limit - $this->queue ) > $this->fetch ) {
+		} elseif(( $fetch = $this->limit - $this->final ) > $this->fetch ) {
 			$fetch = $this->fetch;
 		}
 
-		$this->query->limit( $fetch, $this->queue );
+		$this->query->limit( $fetch, $this->final );
 		$this->query->rewind();
 
 		if( $this->query->valid() ) {
 			$this->index++;
 		}
 
-		$this->queue += $this->fetch;
+		$this->final += $this->fetch;
 
-		if( $this->limit and $this->limit <= $this->queue ) {
-			$this->queue++;
+		if( $this->limit and $this->limit <= $this->final ) {
+			$this->final++;
+		}
+	}
+
+	/**
+	 * @return void
+	 */
+	protected function clear() : void
+	{
+		foreach( $this->query as $id => $row ) {
+			unset( $this->query[ $id ] );
 		}
 	}
 
@@ -110,7 +120,7 @@ class Paginator implements Countable, Iterator
 	function rewind() : void
 	{
 		$this->index = 
-		$this->queue = 0;
+		$this->final = 0;
 
 		$this->fetch();
 	}
@@ -124,8 +134,10 @@ class Paginator implements Countable, Iterator
 
 		if( $this->query->valid() ) {
 			$this->index++;
-		} elseif( $this->index === $this->queue ) {
+		} elseif( $this->index === $this->final ) {
 			$this->fetch();
+		} else {
+			$this->clear();
 		}
 	}
 
