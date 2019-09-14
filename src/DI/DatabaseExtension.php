@@ -73,7 +73,7 @@ class DatabaseExtension extends CompilerExtension
 			->optional()
 			->array()
 			->string()
-			->dir( true )
+			->folder()
 			->fetch();
 
 		$const = $input->create('const')
