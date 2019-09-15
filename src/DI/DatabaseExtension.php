@@ -6,6 +6,7 @@ use Kucbel;
 use Kucbel\Entity\DI\EntityExtension;
 use Kucbel\Scalar\Input\ExtensionInput;
 use Kucbel\Scalar\Input\MixedInput;
+use Kucbel\Scalar\Validator\ValidatorException;
 use Nette;
 use Nette\DI\CompilerExtension;
 use Nette\DI\Definitions\ServiceDefinition;
@@ -90,11 +91,19 @@ class DatabaseExtension extends CompilerExtension
 
 		$input = $input->section('row');
 
-		$param['default'] = $input->create('default')
-			->optional( Kucbel\Database\Row\ActiveRow::class )
-			->string()
-			->impl( Nette\Database\Table\ActiveRow::class )
-			->fetch();
+		$mixed = $input->create('default')
+			->optional( Kucbel\Database\Row\ActiveRow::class );
+
+		try {
+			$param['default'] = $mixed->string()
+				->equal( Nette\Database\Table\ActiveRow::class )
+				->fetch();
+		} catch( ValidatorException $ex ) {
+			$param['default'] = $mixed->class()
+				->extend( Nette\Database\Table\ActiveRow::class )
+				->concrete()
+				->fetch();
+		}
 
 		$input->match();
 
