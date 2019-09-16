@@ -92,17 +92,13 @@ class DatabaseExtension extends CompilerExtension
 		$input = $input->section('row');
 
 		$mixed = $input->create('default')
-			->optional( Kucbel\Database\Row\ActiveRow::class );
+			->optional( Kucbel\Database\Row\ActiveRow::class )
+			->string();
 
 		try {
-			$param['default'] = $mixed->string()
-				->equal( Nette\Database\Table\ActiveRow::class )
-				->fetch();
+			$param['default'] = $mixed->equal( Nette\Database\Table\ActiveRow::class )->fetch();
 		} catch( ValidatorException $ex ) {
-			$param['default'] = $mixed->class()
-				->extend( Nette\Database\Table\ActiveRow::class )
-				->concrete()
-				->fetch();
+			$param['default'] = $mixed->class( Nette\Database\Table\ActiveRow::class )->fetch();
 		}
 
 		$input->match();
