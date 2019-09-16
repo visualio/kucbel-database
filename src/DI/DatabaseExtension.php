@@ -5,13 +5,13 @@ namespace Kucbel\Database\DI;
 use Kucbel;
 use Kucbel\Entity\DI\EntityExtension;
 use Kucbel\Scalar\Input\ExtensionInput;
-use Kucbel\Scalar\Input\MixedInput;
 use Kucbel\Scalar\Validator\ValidatorException;
 use Nette;
 use Nette\DI\CompilerExtension;
 use Nette\DI\Definitions\ServiceDefinition;
 use Nette\InvalidStateException;
 use Nette\Loaders\RobotLoader;
+use Nette\Utils\Strings;
 use ReflectionClass;
 
 class DatabaseExtension extends CompilerExtension
@@ -24,11 +24,11 @@ class DatabaseExtension extends CompilerExtension
 		$param = $this->getParameters();
 		$builder = $this->getContainerBuilder();
 
-		$builder->addDefinition( $this->prefix('repo'))
+		$builder->addDefinition( $this->prefix('repository'))
 			->setType( Kucbel\Database\Repository::class )
 			->setArguments([ $param['classes'], $param['default'] ]);
 
-		$builder->addDefinition( $this->prefix('trans'))
+		$builder->addDefinition( $this->prefix('transaction'))
 			->setType( Kucbel\Database\Utils\Transaction::class );
 
 		$builder->addDefinition( $this->prefix('table.factory'))
@@ -47,7 +47,7 @@ class DatabaseExtension extends CompilerExtension
 	 */
 	function beforeCompile()
 	{
-		$arguments[] = $this->prefix('@repo');
+		$arguments[] = $this->prefix('@repository');
 
 		$builder = $this->getContainerBuilder();
 
@@ -68,16 +68,26 @@ class DatabaseExtension extends CompilerExtension
 	 */
 	private function getParameters() : array
 	{
-		$input = new ExtensionInput( $this, 'table');
+		$input = new ExtensionInput( $this );
 
-		$folders = $input->create('scan')
+		$mixed = $input->create('row')
+			->optional( Kucbel\Database\Row\ActiveRow::class )
+			->string();
+
+		try {
+			$param['default'] = $mixed->equal( Nette\Database\Table\ActiveRow::class )->fetch();
+		} catch( ValidatorException $ex ) {
+			$param['default'] = $mixed->class( Nette\Database\Table\ActiveRow::class )->fetch();
+		}
+
+		$folders = $input->create('table.scan')
 			->optional()
 			->array()
 			->string()
 			->folder()
 			->fetch();
 
-		$const = $input->create('const')
+		$const = $input->create('table.const')
 			->optional('TABLE')
 			->string()
 			->match('~^[A-Z][A-Z0-9_]+$~')
@@ -87,18 +97,6 @@ class DatabaseExtension extends CompilerExtension
 			$param['classes'] = $this->getClasses( $const, ...$folders );
 		} else {
 			$param['classes'] = [];
-		}
-
-		$input = $input->section('row');
-
-		$mixed = $input->create('default')
-			->optional( Kucbel\Database\Row\ActiveRow::class )
-			->string();
-
-		try {
-			$param['default'] = $mixed->equal( Nette\Database\Table\ActiveRow::class )->fetch();
-		} catch( ValidatorException $ex ) {
-			$param['default'] = $mixed->class( Nette\Database\Table\ActiveRow::class )->fetch();
 		}
 
 		$input->match();
@@ -129,20 +127,19 @@ class DatabaseExtension extends CompilerExtension
 				continue;
 			}
 
-			$input = new MixedInput([ $const => $class->getConstant( $const ) ], $class->getShortName() );
-
-			$tables = $input->create( $const )
-				->array()
-				->count( 1, null )
-				->string()
-				->match('~^[a-z][a-z0-9_]*$~i')
-				->fetch();
+			$tables = (array) $class->getConstant( $const );
 
 			foreach( $tables as $table ) {
-				$exist = $classes[ $table ] ?? null;
+				if( !is_string( $table )) {
+					throw new InvalidStateException("Constant '{$type}::{$const}' has invalid format.");
+				} elseif( !Strings::match( $table, '~^[a-z][a-z0-9_]*$~i')) {
+					throw new InvalidStateException("Constant '{$type}::{$const}' has invalid table name '{$table}'.");
+				}
 
-				if( $exist ) {
-					throw new InvalidStateException("Duplicate table '$table' mapped in rows '$exist' and '$class'.");
+				$dupe = $classes[ $table ] ?? null;
+
+				if( $dupe ) {
+					throw new InvalidStateException("Classes '{$dupe}' and '{$type}' are mapped to the same table '{$table}'.");
 				}
 
 				$classes[ $table ] = $class->getName();
