@@ -68,16 +68,19 @@ class DatabaseExtension extends CompilerExtension
 	 */
 	private function getParameters() : array
 	{
+		$default = Kucbel\Database\Row\ActiveRow::class;
+		$parent = Nette\Database\Table\ActiveRow::class;
+
 		$input = new ExtensionInput( $this );
 
 		$mixed = $input->create('row')
-			->optional( Kucbel\Database\Row\ActiveRow::class )
+			->optional( $default )
 			->string();
 
 		try {
-			$param['default'] = $mixed->equal( Nette\Database\Table\ActiveRow::class )->fetch();
+			$param['default'] = $mixed->equal( $parent )->fetch();
 		} catch( ValidatorException $ex ) {
-			$param['default'] = $mixed->class( Nette\Database\Table\ActiveRow::class )->fetch();
+			$param['default'] = $mixed->class( $parent )->fetch();
 		}
 
 		$folders = $input->create('table.scan')
@@ -90,7 +93,7 @@ class DatabaseExtension extends CompilerExtension
 		$const = $input->create('table.const')
 			->optional('TABLE')
 			->string()
-			->match('~^[A-Z][A-Z0-9_]+$~')
+			->match('~^[A-Z][A-Z0-9]*(_+[A-Z0-9]+)*$~')
 			->fetch();
 
 		if( $folders ) {
@@ -132,7 +135,7 @@ class DatabaseExtension extends CompilerExtension
 			foreach( $tables as $table ) {
 				if( !is_string( $table )) {
 					throw new InvalidStateException("Constant '{$type}::{$const}' has invalid format.");
-				} elseif( !Strings::match( $table, '~^[a-z][a-z0-9_]*$~i')) {
+				} elseif( !Strings::match( $table, '~^[a-z][a-z0-9]*(_+[a-z0-9]+)*$~i')) {
 					throw new InvalidStateException("Constant '{$type}::{$const}' has invalid table name '{$table}'.");
 				}
 
