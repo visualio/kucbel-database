@@ -21,12 +21,12 @@ class DatabaseExtension extends CompilerExtension
 	 */
 	function loadConfiguration()
 	{
-		$param = $this->getParameters();
+		$config = $this->getParameters();
 		$builder = $this->getContainerBuilder();
 
 		$builder->addDefinition( $this->prefix('repository'))
 			->setType( Kucbel\Database\Repository::class )
-			->setArguments([ $param['classes'], $param['default'] ]);
+			->setArguments([ $config['classes'], $config['default'] ]);
 
 		$builder->addDefinition( $this->prefix('transaction'))
 			->setType( Kucbel\Database\Utils\Transaction::class );
