@@ -1,6 +1,6 @@
 <?php
 
-namespace Kucbel\Database\Utils;
+namespace Kucbel\Database\Query;
 
 use Countable;
 use Iterator;
@@ -10,7 +10,7 @@ use Nette\InvalidArgumentException;
 use Nette\InvalidStateException;
 use Nette\SmartObject;
 
-class Paginator implements Countable, Iterator
+class SelectionIterator implements Countable, Iterator
 {
 	use SmartObject;
 
