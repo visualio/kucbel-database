@@ -184,7 +184,7 @@ class Table
 	 */
 	function findAll( array $order = null ) : array
 	{
-		if( !$order and $this->results['all'] ?? false ) {
+		if( isset( $this->results['all'] ) and !$order ) {
 			return $this->results['row'];
 		}
 
@@ -401,11 +401,12 @@ class Table
 
 	/**
 	 * @param array $values
+	 * @param int $batch
 	 * @return int
 	 */
-	function insertMany( array $values ) : int
+	function insertMany( array $values, int $batch = null ) : int
 	{
-		$chunks = new ChunkIterator( $values, $this->options['insert'] );
+		$chunks = new ChunkIterator( $values, $batch ?? $this->options['insert'] );
 
 		$insert = $this->builder()->buildInsertQuery();
 		$insert .= ' ?values';
