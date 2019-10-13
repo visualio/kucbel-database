@@ -5,10 +5,10 @@ namespace Kucbel\Database\Table;
 use Kucbel\Database\Query\SelectionIterator;
 use Kucbel\Database\Row\MissingRowException;
 use Kucbel\Iterators\ArrayIterator;
+use Kucbel\Iterators\ChunkIterator;
 use Kucbel\Iterators\FilterIterator;
 use Kucbel\Iterators\ModifyIterator;
 use Nette\Database\Context;
-use Nette\Database\ResultSet;
 use Nette\Database\SqlLiteral;
 use Nette\Database\Table\ActiveRow;
 use Nette\Database\Table\Selection;
@@ -134,7 +134,7 @@ class Table
 
 		$row = $query->where("{$where} = ?", $key, ...$keys )->fetch();
 
-		if( $row and $this->options['cache'] ) {
+		if( $this->options['cache'] and $row ) {
 			$this->results['row'][ $id ] = $row;
 		}
 
@@ -190,7 +190,7 @@ class Table
 
 		$rows = $this->select( null, $order )->fetchAll();
 
-		if( !$order and $this->options['cache'] ) {
+		if( $this->options['cache'] and !$order ) {
 			$this->results['all'] = true;
 			$this->results['row'] = $rows;
 		}
@@ -274,8 +274,8 @@ class Table
 				return $row->$index;
 			};
 		} else {
-			$index = function() {
-				return null;
+			$index = function( $row, $id, $pos ) {
+				return $pos;
 			};
 		}
 
@@ -396,10 +396,6 @@ class Table
 
 		$count = $this->database->query( $insert, $values )->getRowCount();
 
-		if( !$count and $this->options['strict'] ) {
-			throw new TableException("Table '{$this->name}' didn't insert row.");
-		}
-
 		return $count;
 	}
 
@@ -409,15 +405,7 @@ class Table
 	 */
 	function insertMany( array $values ) : int
 	{
-		$queue = count( $values );
-
-		if( $queue > $this->options['insert'] ) {
-			$chunks = array_chunk( $values, $this->options['insert'] );
-		} elseif( $queue ) {
-			$chunks[] = $values;
-		} else {
-			$chunks = [];
-		}
+		$chunks = new ChunkIterator( $values, $this->options['insert'] );
 
 		$insert = $this->builder()->buildInsertQuery();
 		$insert .= ' ?values';
@@ -426,12 +414,6 @@ class Table
 
 		foreach( $chunks as $chunk ) {
 			$count += $this->database->query( $insert, $chunk )->getRowCount();
-		}
-
-		if( $count !== $queue and $this->options['strict'] ) {
-			$queue -= $count;
-
-			throw new TableException("Table '{$this->name}' didn't insert {$queue} rows.");
 		}
 
 		return $count;
@@ -458,7 +440,7 @@ class Table
 		$id = $row->getSignature();
 		$ok = $row->update( $values );
 
-		if( !$ok and $this->options['strict'] ) {
+		if( $this->options['strict'] and !$ok ) {
 			throw new TableException("Table '{$this->name}' didn't update row #{$id}.");
 		}
 
@@ -497,7 +479,7 @@ class Table
 		$id = $row->getSignature();
 		$ok = $row->delete();
 
-		if( !$ok and $this->options['strict'] ) {
+		if( $this->options['strict'] and !$ok ) {
 			throw new TableException("Table '{$this->name}' didn't delete row #{$id}.");
 		}
 
@@ -527,11 +509,11 @@ class Table
 	/**
 	 * @param string $query
 	 * @param mixed ...$values
-	 * @return ResultSet
+	 * @return int
 	 */
-	function query( string $query, ...$values ) : ResultSet
+	function query( string $query, ...$values ) : int
 	{
-		return $this->database->query( $query, ...$values );
+		return $this->database->query( $query, ...$values )->getRowCount();
 	}
 
 	/**
