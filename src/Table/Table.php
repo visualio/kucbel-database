@@ -518,13 +518,17 @@ class Table
 	}
 
 	/**
-	 * @return $this
+	 * @return bool
 	 */
-	function clear() : self
+	function clear() : bool
 	{
-		$this->results = null;
+		if( $this->options['cache'] ) {
+			$this->results = null;
 
-		return $this;
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	/**
