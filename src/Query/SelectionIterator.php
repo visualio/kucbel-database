@@ -48,7 +48,7 @@ class SelectionIterator implements Countable, Iterator
 	 * SelectionIterator constructor.
 	 *
 	 * @param Selection $query
-	 * @param int       $fetch
+	 * @param int $fetch
 	 */
 	function __construct( Selection $query, int $fetch = 100 )
 	{

@@ -15,6 +15,7 @@
 		"nette/robot-loader": "^3.0",
 		"nette/utils": "^3.0",
 		"kucbel/entity": "^2.0",
+		"kucbel/iterators": "^2.0",
 		"kucbel/scalar": "^3.0"
 	},
 	"autoload": {

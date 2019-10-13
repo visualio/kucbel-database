@@ -2,7 +2,11 @@
 
 namespace Kucbel\Database\Table;
 
+use Kucbel\Database\Query\SelectionIterator;
 use Kucbel\Database\Row\MissingRowException;
+use Kucbel\Iterators\ArrayIterator;
+use Kucbel\Iterators\FilterIterator;
+use Kucbel\Iterators\ModifyIterator;
 use Nette\Database\Context;
 use Nette\Database\ResultSet;
 use Nette\Database\SqlLiteral;
@@ -161,12 +165,26 @@ class Table
 	}
 
 	/**
+	 * @param array $where
+	 * @param array $order
+	 * @param int $limit
+	 * @param int $fetch
+	 * @return ActiveRow[]
+	 */
+	function findLazy( array $where = null, array $order = null, int $limit = null, int $fetch = 100 ) : iterable
+	{
+		$query = $this->select( $where, $order, $limit );
+
+		return new SelectionIterator( $query, $fetch );
+	}
+
+	/**
 	 * @param array $order
 	 * @return ActiveRow[]
 	 */
 	function findAll( array $order = null ) : array
 	{
-		if( !$order and $this->options['cache'] and $this->results['all'] ?? false ) {
+		if( !$order and $this->results['all'] ?? false ) {
 			return $this->results['row'];
 		}
 
@@ -182,54 +200,58 @@ class Table
 
 	/**
 	 * @param ActiveRow $row
-	 * @param string ...$skip
+	 * @param string ...$not
+	 * @return ActiveRow | null
+	 */
+	function refer( ActiveRow $row, string ...$not ) : ?ActiveRow
+	{
+		$rows = $this->referAll( $row, ...$not );
+
+		foreach( $rows as $row ) {
+			return $row;
+		}
+
+		return null;
+	}
+
+	/**
+	 * @param ActiveRow $row
+	 * @param string ...$not
 	 * @return ActiveRow[]
 	 */
-	function findRef( ActiveRow $row, string ...$skip ) : array
+	function referAll( ActiveRow $row, string ...$not ) : iterable
 	{
 		$value = $row->getPrimary();
+		$tables = $this->database->getStructure()->getHasManyReference( $this->name );
 
 		if( is_array( $value )) {
 			throw new InvalidArgumentException("Row must have scalar primary key.");
 		}
 
-		$tables = $this->database->getStructure()->getHasManyReference( $this->name );
-
-		$skip = array_flip( $skip );
-		$rows = [];
+		$refers = new ArrayIterator;
 
 		foreach( $tables as $table => $columns ) {
-			if( array_key_exists( $table, $skip )) {
-				continue;
-			}
-
-			$param =
-			$where = null;
-
 			foreach( $columns as $column ) {
-				if( array_key_exists("{$table}.{$column}", $skip )) {
-					continue;
-				}
-
-				$where[] = "{$column} = ?";
-				$param[] = $value;
-			}
-
-			if( !$where ) {
-				continue;
-			}
-
-			$row = $this->database->table( $table )
-				->where( implode(' OR ', $where ), ...$param )
-				->limit( 1 )
-				->fetch();
-
-			if( $row ) {
-				$rows[] = $row;
+				$refers["{$table}.{$column}"] = [ $table, $column ];
 			}
 		}
 
-		return $rows;
+		if( $not or $not = $this->defaults['refer'] ?? null ) {
+			$not = array_flip( $not );
+
+			$refers = new FilterIterator( $refers, function( $refer, $index ) use( $not ) {
+				return !isset( $not[ $refer[0]] ) and !isset( $not[ $index ]);
+			});
+		}
+
+		$refers = new ModifyIterator( $refers, function( $refer ) use( $value ) {
+			return $this->database->table( $refer[0] )
+				->where("{$refer[1]} = ?", $value )
+				->limit( 1 )
+				->fetch();
+		});
+
+		return new FilterIterator( $refers );
 	}
 
 	/**
@@ -247,27 +269,19 @@ class Table
 			throw new InvalidArgumentException("Array must have string column name.");
 		}
 
-		if( is_int( $index = key( $array ))) {
-			$count = 0;
-			$index = function() use( &$count ) {
-				return $count++;
-			};
-		} else {
+		if( is_string( $index = key( $array ))) {
 			$index = function( ActiveRow $row ) use( $index ) {
 				return $row->$index;
 			};
+		} else {
+			$index = function() {
+				return null;
+			};
 		}
 
-		$list = [];
+		$query = new ModifyIterator( $query, $value, $index );
 
-		foreach( $query as $row ) {
-			$key = $index( $row );
-			$col = $value( $row );
-
-			$list[ $key ?? ''] = $col;
-		}
-
-		return $list;
+		return $query->toArray();
 	}
 
 	/**
@@ -537,17 +551,6 @@ class Table
 	protected function primary( ...$keys ) : string
 	{
 		return implode('|', $keys );
-	}
-
-	/**
-	 * @param string $name
-	 * @return string
-	 */
-	protected function escape( string $name ) : string
-	{
-		$driver = $this->database->getConnection()->getSupplementalDriver();
-
-		return $driver->delimite( $name );
 	}
 
 	/**
