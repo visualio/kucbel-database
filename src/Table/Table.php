@@ -5,6 +5,7 @@ namespace Kucbel\Database\Table;
 use Kucbel\Database\Row\MissingRowException;
 use Nette\Database\Context;
 use Nette\Database\ResultSet;
+use Nette\Database\SqlLiteral;
 use Nette\Database\Table\ActiveRow;
 use Nette\Database\Table\Selection;
 use Nette\Database\Table\SqlBuilder;
@@ -30,22 +31,38 @@ class Table
 	 * @var array
 	 */
 	protected $options = [
+		'cache'		=> false,
 		'strict'	=> true,
 		'insert'	=> 100,
 	];
+
+	/**
+	 * @var array
+	 */
+	protected $defaults = [];
+
+	/**
+	 * @var array
+	 */
+	protected $results = [];
 
 	/**
 	 * Table constructor.
 	 *
 	 * @param string $name
 	 * @param array $options
+	 * @param array $defaults
 	 */
-	function __construct( string $name, array $options = null )
+	function __construct( string $name, array $options = null, array $defaults = null )
 	{
 		$this->name = $name;
 
 		if( $options ) {
 			$this->options = $options + $this->options;
+		}
+
+		if( $defaults ) {
+			$this->defaults = $defaults + $this->defaults;
 		}
 	}
 
@@ -99,11 +116,25 @@ class Table
 	 */
 	function find( $key, ...$keys ) : ?ActiveRow
 	{
+		if( $this->options['cache'] ) {
+			$id = $this->primary( $key, ...$keys );
+
+			if( isset( $this->results['row'][ $id ] )) {
+				return $this->results['row'][ $id ];
+			}
+		}
+
 		$query = $this->database->table( $this->name );
 
 		$where = implode(' = ? AND ', (array) $query->getPrimary() );
 
-		return $query->where("{$where} = ?", $key, ...$keys )->fetch();
+		$row = $query->where("{$where} = ?", $key, ...$keys )->fetch();
+
+		if( $row and $this->options['cache'] ) {
+			$this->results['row'][ $id ] = $row;
+		}
+
+		return $row;
 	}
 
 	/**
@@ -135,7 +166,18 @@ class Table
 	 */
 	function findAll( array $order = null ) : array
 	{
-		return $this->select( null, $order )->fetchAll();
+		if( !$order and $this->options['cache'] and $this->results['all'] ?? false ) {
+			return $this->results['row'];
+		}
+
+		$rows = $this->select( null, $order )->fetchAll();
+
+		if( !$order and $this->options['cache'] ) {
+			$this->results['all'] = true;
+			$this->results['row'] = $rows;
+		}
+
+		return $rows;
 	}
 
 	/**
@@ -266,7 +308,7 @@ class Table
 	{
 		$query = $this->database->table( $this->name );
 
-		if( $where ) {
+		if( $where or $where = $this->defaults['where'] ?? null ) {
 			foreach( $where as $column => $param ) {
 				if( is_int( $column )) {
 					$query->where( $param );
@@ -278,7 +320,7 @@ class Table
 			}
 		}
 
-		if( $order ) {
+		if( $order or $order = $this->defaults['order'] ?? null ) {
 			foreach( $order as $column => $param ) {
 				if( is_int( $column )) {
 					$query->order( $param );
@@ -290,7 +332,7 @@ class Table
 			}
 		}
 
-		if( $limit ) {
+		if( $limit or $limit = $this->defaults['limit'] ?? null ) {
 			$query->limit( $limit, $offset );
 		}
 
@@ -318,6 +360,12 @@ class Table
 
 		if( !$row instanceof ActiveRow ) {
 			throw new TableException("Table '{$this->name}' didn't insert or return row.");
+		}
+
+		if( $this->options['cache'] ) {
+			$id = $row->getSignature();
+
+			$this->results['row'][ $id ] = $row;
 		}
 
 		return $row;
@@ -376,6 +424,16 @@ class Table
 	}
 
 	/**
+	 * @return int | null
+	 */
+	function insertId() : ?int
+	{
+		$id = (int) $this->database->getInsertId();
+
+		return $id ? $id : null;
+	}
+
+	/**
 	 * @param ActiveRow $row
 	 * @param array $values
 	 * @return bool
@@ -403,6 +461,16 @@ class Table
 	function updateMany( array $values, array $where = null, array $order = null, int $limit = null ) : int
 	{
 		return $this->select( $where, $order, $limit )->update( $values );
+	}
+
+	/**
+	 * @param array $values
+	 * @param array $order
+	 * @return int
+	 */
+	function updateAll( array $values, array $order = null ) : int
+	{
+		return $this->select( null, $order )->update( $values );
 	}
 
 	/**
@@ -434,13 +502,41 @@ class Table
 	}
 
 	/**
-	 * @param string $command
-	 * @param mixed ...$arguments
+	 * @param array $order
+	 * @return int
+	 */
+	function deleteAll( array $order = null ) : int
+	{
+		return $this->select( null, $order )->delete();
+	}
+
+	/**
+	 * @param string $query
+	 * @param mixed ...$values
 	 * @return ResultSet
 	 */
-	function query( string $command, ...$arguments ) : ResultSet
+	function query( string $query, ...$values ) : ResultSet
 	{
-		return $this->database->query( $command, ...$arguments );
+		return $this->database->query( $query, ...$values );
+	}
+
+	/**
+	 * @return $this
+	 */
+	function clear() : self
+	{
+		$this->results = null;
+
+		return $this;
+	}
+
+	/**
+	 * @param mixed ...$keys
+	 * @return string
+	 */
+	protected function primary( ...$keys ) : string
+	{
+		return implode('|', $keys );
 	}
 
 	/**
@@ -460,5 +556,15 @@ class Table
 	protected function builder() : SqlBuilder
 	{
 		return new SqlBuilder( $this->name, $this->database );
+	}
+
+	/**
+	 * @param string $query
+	 * @param mixed ...$values
+	 * @return SqlLiteral
+	 */
+	protected function literal( string $query, ...$values ) : SqlLiteral
+	{
+		return new SqlLiteral( $query, $values );
 	}
 }

@@ -8,7 +8,7 @@ use Throwable;
 class DuplicateRowException extends ActiveRowException
 {
 	/**
-	 * @var ActiveRow
+	 * @var ActiveRow | null
 	 */
 	private $row;
 

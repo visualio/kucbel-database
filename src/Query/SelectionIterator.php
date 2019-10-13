@@ -45,7 +45,7 @@ class SelectionIterator implements Countable, Iterator
 	private $count;
 
 	/**
-	 * Paginator constructor.
+	 * SelectionIterator constructor.
 	 *
 	 * @param Selection $query
 	 * @param int       $fetch
