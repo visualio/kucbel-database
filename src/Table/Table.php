@@ -35,9 +35,10 @@ class Table
 	 * @var array
 	 */
 	protected $options = [
-		'cache'		=> false,
-		'strict'	=> true,
+		'select'	=> 100,
 		'insert'	=> 100,
+		'strict'	=> true,
+		'cache'		=> false,
 	];
 
 	/**
@@ -171,11 +172,11 @@ class Table
 	 * @param int $fetch
 	 * @return ActiveRow[]
 	 */
-	function findLazy( array $where = null, array $order = null, int $limit = null, int $fetch = 100 ) : iterable
+	function findLazy( array $where = null, array $order = null, int $limit = null, int $fetch = null ) : iterable
 	{
 		$query = $this->select( $where, $order, $limit );
 
-		return new SelectionIterator( $query, $fetch );
+		return new SelectionIterator( $query, $fetch ?? $this->options['select'] );
 	}
 
 	/**
