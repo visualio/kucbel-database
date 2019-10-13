@@ -9,7 +9,6 @@ use Kucbel\Iterators\ChunkIterator;
 use Kucbel\Iterators\FilterIterator;
 use Kucbel\Iterators\ModifyIterator;
 use Nette\Database\Context;
-use Nette\Database\SqlLiteral;
 use Nette\Database\Table\ActiveRow;
 use Nette\Database\Table\Selection;
 use Nette\Database\Table\SqlBuilder;
@@ -547,15 +546,5 @@ class Table
 	protected function builder() : SqlBuilder
 	{
 		return new SqlBuilder( $this->name, $this->database );
-	}
-
-	/**
-	 * @param string $query
-	 * @param mixed ...$values
-	 * @return SqlLiteral
-	 */
-	protected function literal( string $query, ...$values ) : SqlLiteral
-	{
-		return new SqlLiteral( $query, $values );
 	}
 }
