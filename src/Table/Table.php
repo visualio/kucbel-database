@@ -149,7 +149,7 @@ class Table
 	 */
 	function findOne( array $where = null, array $order = null, bool $limit = false ) : ?ActiveRow
 	{
-		return $this->select( $where, $order, $limit ? 1 : null )->fetch();
+		return $this->query( $where, $order, $limit ? 1 : null )->fetch();
 	}
 
 	/**
@@ -161,7 +161,7 @@ class Table
 	 */
 	function findMany( array $where = null, array $order = null, int $limit = null, int $offset = null ) : array
 	{
-		return $this->select( $where, $order, $limit, $offset )->fetchAll();
+		return $this->query( $where, $order, $limit, $offset )->fetchAll();
 	}
 
 	/**
@@ -173,7 +173,7 @@ class Table
 	 */
 	function findLazy( array $where = null, array $order = null, int $limit = null, int $fetch = null ) : iterable
 	{
-		$query = $this->select( $where, $order, $limit );
+		$query = $this->query( $where, $order, $limit );
 
 		return new SelectionIterator( $query, $fetch ?? $this->options['select'] );
 	}
@@ -188,7 +188,7 @@ class Table
 			return $this->results['row'];
 		}
 
-		$rows = $this->select( null, $order )->fetchAll();
+		$rows = $this->query( null, $order )->fetchAll();
 
 		if( $this->options['cache'] and !$order ) {
 			$this->results['all'] = true;
@@ -294,7 +294,7 @@ class Table
 	 */
 	function listMany( array $array, array $where = null, array $order = null, int $limit = null, int $offset = null ) : array
 	{
-		$query = $this->select( $where, $order, $limit, $offset );
+		$query = $this->query( $where, $order, $limit, $offset );
 
 		return $this->list( $query, $array );
 	}
@@ -306,7 +306,7 @@ class Table
 	 */
 	function listAll( array $array, array $order = null ) : array
 	{
-		$query = $this->select( null, $order );
+		$query = $this->query( null, $order );
 
 		return $this->list( $query, $array );
 	}
@@ -318,7 +318,7 @@ class Table
 	 * @param int $offset
 	 * @return Selection
 	 */
-	function select( array $where = null, array $order = null, int $limit = null, int $offset = null ) : Selection
+	function query( array $where = null, array $order = null, int $limit = null, int $offset = null ) : Selection
 	{
 		$query = $this->database->table( $this->name );
 
@@ -360,7 +360,7 @@ class Table
 	 */
 	function count( array $where = null, string $column = '*') : int
 	{
-		return $this->select( $where )->count( $column );
+		return $this->query( $where )->count( $column );
 	}
 
 	/**
@@ -457,7 +457,7 @@ class Table
 	 */
 	function updateMany( array $values, array $where = null, array $order = null, int $limit = null ) : int
 	{
-		return $this->select( $where, $order, $limit )->update( $values );
+		return $this->query( $where, $order, $limit )->update( $values );
 	}
 
 	/**
@@ -467,7 +467,7 @@ class Table
 	 */
 	function updateAll( array $values, array $order = null ) : int
 	{
-		return $this->select( null, $order )->update( $values );
+		return $this->query( null, $order )->update( $values );
 	}
 
 	/**
@@ -495,7 +495,7 @@ class Table
 	 */
 	function deleteMany( array $where = null, array $order = null, int $limit = null ) : int
 	{
-		return $this->select( $where, $order, $limit )->delete();
+		return $this->query( $where, $order, $limit )->delete();
 	}
 
 	/**
@@ -504,17 +504,7 @@ class Table
 	 */
 	function deleteAll( array $order = null ) : int
 	{
-		return $this->select( null, $order )->delete();
-	}
-
-	/**
-	 * @param string $query
-	 * @param mixed ...$values
-	 * @return int
-	 */
-	function query( string $query, ...$values ) : int
-	{
-		return $this->database->query( $query, ...$values )->getRowCount();
+		return $this->query( null, $order )->delete();
 	}
 
 	/**
