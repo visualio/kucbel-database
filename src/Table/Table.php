@@ -322,7 +322,7 @@ class Table
 	{
 		$query = $this->database->table( $this->name );
 
-		if( $where or $where = $this->defaults['where'] ?? null ) {
+		if( $where = $where ?? $this->defaults['where'] ?? null ) {
 			foreach( $where as $column => $param ) {
 				if( is_int( $column )) {
 					$query->where( $param );
@@ -334,7 +334,7 @@ class Table
 			}
 		}
 
-		if( $order or $order = $this->defaults['order'] ?? null ) {
+		if( $order = $order ?? $this->defaults['order'] ?? null ) {
 			foreach( $order as $column => $param ) {
 				if( is_int( $column )) {
 					$query->order( $param );
@@ -346,7 +346,7 @@ class Table
 			}
 		}
 
-		if( $limit or $limit = $this->defaults['limit'] ?? null ) {
+		if( $limit = $limit ?? $this->defaults['limit'] ?? null ) {
 			$query->limit( $limit, $offset );
 		}
 
