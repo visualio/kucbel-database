@@ -6,7 +6,6 @@ use Countable;
 use Iterator;
 use Nette\Database\Table\ActiveRow;
 use Nette\Database\Table\Selection;
-use Nette\InvalidArgumentException;
 use Nette\InvalidStateException;
 use Nette\SmartObject;
 
@@ -22,11 +21,6 @@ class SelectionIterator implements Countable, Iterator
 	/**
 	 * @var int
 	 */
-	private $fetch;
-
-	/**
-	 * @var int
-	 */
 	private $index = 0;
 
 	/**
@@ -35,7 +29,7 @@ class SelectionIterator implements Countable, Iterator
 	private $final = 0;
 
 	/**
-	 * @var int | null
+	 * @var int
 	 */
 	private $limit;
 
@@ -48,23 +42,22 @@ class SelectionIterator implements Countable, Iterator
 	 * SelectionIterator constructor.
 	 *
 	 * @param Selection $query
-	 * @param int $fetch
 	 */
-	function __construct( Selection $query, int $fetch = 100 )
+	function __construct( Selection $query )
 	{
-		if( $fetch < 1 ) {
-			throw new InvalidArgumentException;
-		}
-
 		$build = $query->getSqlBuilder();
 
-		$index = $build->getOffset();
+		$first = $build->getOffset();
 		$limit = $build->getLimit();
 		$order = $build->getOrder();
 
-		if( $index ) {
+		if( !$limit ) {
+			$limit = 100;
+		}
+
+		if( $first ) {
 			throw new InvalidStateException("Query can't use offset.");
-		} elseif( $limit and $limit < 0 ) {
+		} elseif( $limit < 1 ) {
 			throw new InvalidStateException("Query can't use negative limit.");
 		}
 
@@ -75,7 +68,6 @@ class SelectionIterator implements Countable, Iterator
 		}
 
 		$this->query = $query;
-		$this->fetch = $fetch;
 		$this->limit = $limit;
 	}
 
@@ -84,28 +76,19 @@ class SelectionIterator implements Countable, Iterator
 	 */
 	protected function fetch() : void
 	{
-		if( !$this->limit ) {
-			$fetch = $this->fetch;
-		} elseif(( $fetch = $this->limit - $this->final ) > $this->fetch ) {
-			$fetch = $this->fetch;
-		}
-
-		$this->query->limit( $fetch, $this->final );
+		$this->query->limit( $this->limit, $this->final );
 		$this->query->rewind();
 
 		if( $this->query->valid() ) {
 			$this->index++;
 		}
 
-		$this->final += $this->fetch;
-
-		if( $this->limit and $this->limit <= $this->final ) {
-			$this->final++;
-		}
+		$this->final += $this->limit;
 	}
 
 	/**
 	 * @return void
+	 * @todo separate query prototype & data iterator
 	 */
 	protected function clear() : void
 	{
@@ -119,7 +102,7 @@ class SelectionIterator implements Countable, Iterator
 	 */
 	function rewind() : void
 	{
-		$this->index = 
+		$this->index =
 		$this->final = 0;
 
 		$this->fetch();
