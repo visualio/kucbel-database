@@ -167,14 +167,14 @@ class Table
 	/**
 	 * @param array $where
 	 * @param array $order
-	 * @param int $limit
+	 * @param int $fetch
 	 * @return ActiveRow[]
 	 */
-	function findLazy( array $where = null, array $order = null, int $limit = null ) : iterable
+	function findLazy( array $where = null, array $order = null, int $fetch = null ) : iterable
 	{
-		$query = $this->query( $where, $order, $limit ?? $this->options['select'] );
+		$query = $this->query( $where, $order );
 
-		return new SelectionIterator( $query );
+		return new SelectionIterator( $query, $fetch ?? $this->options['select'] );
 	}
 
 	/**

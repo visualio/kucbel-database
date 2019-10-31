@@ -4,8 +4,10 @@ namespace Kucbel\Database\Query;
 
 use Countable;
 use Iterator;
+use Kucbel\Iterators\ArrayIterator;
 use Nette\Database\Table\ActiveRow;
 use Nette\Database\Table\Selection;
+use Nette\InvalidArgumentException;
 use Nette\InvalidStateException;
 use Nette\SmartObject;
 
@@ -19,6 +21,21 @@ class SelectionIterator implements Countable, Iterator
 	private $query;
 
 	/**
+	 * @var Iterator
+	 */
+	private $cache;
+
+	/**
+	 * @var Iterator
+	 */
+	private $empty;
+
+	/**
+	 * @var int
+	 */
+	private $limit;
+
+	/**
 	 * @var int
 	 */
 	private $index = 0;
@@ -29,36 +46,29 @@ class SelectionIterator implements Countable, Iterator
 	private $final = 0;
 
 	/**
-	 * @var int
-	 */
-	private $limit;
-
-	/**
 	 * @var int | null
 	 */
-	private $count;
+	private $count = null;
 
 	/**
 	 * SelectionIterator constructor.
 	 *
 	 * @param Selection $query
+	 * @param int $limit
 	 */
-	function __construct( Selection $query )
+	function __construct( Selection $query, int $limit = 100 )
 	{
-		$build = $query->getSqlBuilder();
-
-		$first = $build->getOffset();
-		$limit = $build->getLimit();
-		$order = $build->getOrder();
-
-		if( !$limit ) {
-			$limit = 100;
+		if( $limit < 1 ) {
+			throw new InvalidArgumentException;
 		}
 
-		if( $first ) {
+		$build = $query->getSqlBuilder();
+
+		$index = $build->getOffset();
+		$order = $build->getOrder();
+
+		if( $index ) {
 			throw new InvalidStateException("Query can't use offset.");
-		} elseif( $limit < 1 ) {
-			throw new InvalidStateException("Query can't use negative limit.");
 		}
 
 		if( !$order ) {
@@ -69,32 +79,34 @@ class SelectionIterator implements Countable, Iterator
 
 		$this->query = $query;
 		$this->limit = $limit;
+
+		$this->cache =
+		$this->empty = new ArrayIterator;
 	}
 
 	/**
-	 * @return void
+	 * SelectionIterator cloner.
 	 */
-	protected function fetch() : void
+	function __clone()
 	{
-		$this->query->limit( $this->limit, $this->final );
-		$this->query->rewind();
+		$this->index =
+		$this->final = 0;
 
-		if( $this->query->valid() ) {
-			$this->index++;
-		}
+		$this->cache = $this->empty;
+	}
+
+	/**
+	 * @return Iterator | null
+	 */
+	protected function fetch() : ?Iterator
+	{
+		$query = clone $this->query;
+		$query->limit( $this->limit, $this->final );
+		$query->rewind();
 
 		$this->final += $this->limit;
-	}
 
-	/**
-	 * @return void
-	 * @todo separate query prototype & data iterator
-	 */
-	protected function clear() : void
-	{
-		foreach( $this->query as $id => $row ) {
-			unset( $this->query[ $id ] );
-		}
+		return $query->valid() ? $query : null;
 	}
 
 	/**
@@ -105,7 +117,11 @@ class SelectionIterator implements Countable, Iterator
 		$this->index =
 		$this->final = 0;
 
-		$this->fetch();
+		if( $this->cache = $this->fetch() ) {
+			$this->index++;
+		} else {
+			$this->cache = $this->empty;
+		}
 	}
 
 	/**
@@ -117,10 +133,10 @@ class SelectionIterator implements Countable, Iterator
 
 		if( $this->query->valid() ) {
 			$this->index++;
-		} elseif( $this->index === $this->final ) {
-			$this->fetch();
+		} elseif( $this->index === $this->final and $this->cache = $this->fetch() ) {
+			$this->index++;
 		} else {
-			$this->clear();
+			$this->cache = $this->empty;
 		}
 	}
 
@@ -129,7 +145,7 @@ class SelectionIterator implements Countable, Iterator
 	 */
 	function valid() : bool
 	{
-		return $this->query->valid();
+		return $this->cache->valid();
 	}
 
 	/**
@@ -137,7 +153,7 @@ class SelectionIterator implements Countable, Iterator
 	 */
 	function key()
 	{
-		return $this->query->key();
+		return $this->cache->key();
 	}
 
 	/**
@@ -145,7 +161,7 @@ class SelectionIterator implements Countable, Iterator
 	 */
 	function current()
 	{
-		return $this->query->current();
+		return $this->cache->current();
 	}
 
 	/**
