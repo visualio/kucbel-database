@@ -4,11 +4,10 @@ namespace Kucbel\Database\Query;
 
 use Countable;
 use Iterator;
-use Kucbel\Iterators\ArrayIterator;
+use Kucbel\Iterators\VoidIterator;
 use Nette\Database\Table\ActiveRow;
 use Nette\Database\Table\Selection;
 use Nette\InvalidArgumentException;
-use Nette\InvalidStateException;
 use Nette\SmartObject;
 
 class SelectionIterator implements Countable, Iterator
@@ -62,14 +61,7 @@ class SelectionIterator implements Countable, Iterator
 			throw new InvalidArgumentException;
 		}
 
-		$build = $query->getSqlBuilder();
-
-		$index = $build->getOffset();
-		$order = $build->getOrder();
-
-		if( $index ) {
-			throw new InvalidStateException("Query can't use offset.");
-		}
+		$order = $query->getSqlBuilder()->getOrder();
 
 		if( !$order ) {
 			$order = (array) $query->getPrimary();
@@ -81,7 +73,7 @@ class SelectionIterator implements Countable, Iterator
 		$this->limit = $limit;
 
 		$this->cache =
-		$this->empty = new ArrayIterator;
+		$this->empty = new VoidIterator;
 	}
 
 	/**
@@ -129,9 +121,9 @@ class SelectionIterator implements Countable, Iterator
 	 */
 	function next() : void
 	{
-		$this->query->next();
+		$this->cache->next();
 
-		if( $this->query->valid() ) {
+		if( $this->cache->valid() ) {
 			$this->index++;
 		} elseif( $this->index === $this->final and $this->cache = $this->fetch() ) {
 			$this->index++;
