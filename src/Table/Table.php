@@ -4,7 +4,6 @@ namespace Kucbel\Database\Table;
 
 use Kucbel\Database\Query\SelectionIterator;
 use Kucbel\Database\Row\MissingRowException;
-use Kucbel\Iterators\ArrayIterator;
 use Kucbel\Iterators\ChunkIterator;
 use Kucbel\Iterators\FilterIterator;
 use Kucbel\Iterators\ModifyIterator;
@@ -199,12 +198,12 @@ class Table
 
 	/**
 	 * @param ActiveRow $row
-	 * @param string ...$not
+	 * @param array $tables
 	 * @return ActiveRow | null
 	 */
-	function refer( ActiveRow $row, string ...$not ) : ?ActiveRow
+	function refer( ActiveRow $row, array $tables ) : ?ActiveRow
 	{
-		$rows = $this->referAll( $row, ...$not );
+		$rows = $this->relate( $row, $tables );
 
 		foreach( $rows as $row ) {
 			return $row;
@@ -215,42 +214,31 @@ class Table
 
 	/**
 	 * @param ActiveRow $row
-	 * @param string ...$not
+	 * @param array $tables
 	 * @return ActiveRow[]
 	 */
-	function referAll( ActiveRow $row, string ...$not ) : iterable
+	function relate( ActiveRow $row, array $tables ) : iterable
 	{
-		$value = $row->getPrimary();
-		$tables = $this->database->getStructure()->getHasManyReference( $this->name );
-
-		if( is_array( $value )) {
-			throw new InvalidArgumentException("Row must have scalar primary key.");
+		if( is_array( $value = $row->getPrimary() )) {
+			throw new InvalidArgumentException('Row must have scalar primary key.');
 		}
 
-		$refers = new ArrayIterator;
-
 		foreach( $tables as $table => $columns ) {
-			foreach( $columns as $column ) {
-				$refers["{$table}.{$column}"] = [ $table, $column ];
+			if( is_array( $columns )) {
+				$tables[ $table ] = array_fill_keys( $columns, $value );
+			} else {
+				$tables[ $table ] = [ $columns => $value ];
 			}
 		}
 
-		if( $not or $not = $this->defaults['refer'] ?? null ) {
-			$not = array_flip( $not );
-
-			$refers = new FilterIterator( $refers, function( $refer, $index ) use( $not ) {
-				return !isset( $not[ $refer[0]] ) and !isset( $not[ $index ]);
-			});
-		}
-
-		$refers = new ModifyIterator( $refers, function( $refer ) use( $value ) {
-			return $this->database->table( $refer[0] )
-				->where("{$refer[1]} = ?", $value )
+		$queue = new ModifyIterator( $tables, function( array $where, string $table ) {
+			return $this->database->table( $table )
+				->where($where )
 				->limit( 1 )
 				->fetch();
 		});
 
-		return new FilterIterator( $refers );
+		return new FilterIterator( $queue );
 	}
 
 	/**
