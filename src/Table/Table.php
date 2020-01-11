@@ -221,6 +221,8 @@ class Table
 	{
 		if( is_array( $value = $row->getPrimary() )) {
 			throw new InvalidArgumentException('Row must have scalar primary key.');
+		} elseif( !$tables ) {
+			throw new InvalidArgumentException('Table must have a column name.');
 		}
 
 		foreach( $tables as $table => $columns ) {
