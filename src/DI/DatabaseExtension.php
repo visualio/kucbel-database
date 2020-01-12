@@ -3,7 +3,6 @@
 namespace Kucbel\Database\DI;
 
 use Kucbel;
-use Kucbel\Entity\DI\EntityExtension;
 use Kucbel\Scalar\Input\ExtensionInput;
 use Kucbel\Scalar\Validator\ValidatorException;
 use Nette;
@@ -31,15 +30,9 @@ class DatabaseExtension extends CompilerExtension
 		$builder->addDefinition( $this->prefix('transaction'))
 			->setType( Kucbel\Database\Utils\Transaction::class );
 
-		$builder->addDefinition( $this->prefix('table.factory'))
-			->setType( Kucbel\Database\Table\TableFactory::class );
-
-		if( $this->compiler->getExtensions( EntityExtension::class )) {
-			$builder->addDefinition( $this->prefix('table'))
-				->setType( Kucbel\Database\Table\Table::class )
-				->addTag('entity')
-				->addTag('nette.inject');
-		}
+		$builder->addFactoryDefinition( $this->prefix('table'))
+			->setImplement( Kucbel\Database\Table\TableFactory::class )
+			->addTag('nette.inject');
 	}
 
 	/**
@@ -147,7 +140,6 @@ class DatabaseExtension extends CompilerExtension
 
 				$classes[ $table ] = $class->getName();
 			}
-
 		}
 
 		ksort( $classes );
