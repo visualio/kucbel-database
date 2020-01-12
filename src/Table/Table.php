@@ -2,14 +2,14 @@
 
 namespace Kucbel\Database\Table;
 
+use Kucbel\Database\Context;
+use Kucbel\Database\Query\Selection;
 use Kucbel\Database\Query\SelectionIterator;
 use Kucbel\Database\Row\MissingRowException;
 use Kucbel\Iterators\ChunkIterator;
 use Kucbel\Iterators\FilterIterator;
 use Kucbel\Iterators\ModifyIterator;
-use Nette\Database\Context;
 use Nette\Database\Table\ActiveRow;
-use Nette\Database\Table\Selection;
 use Nette\Database\Table\SqlBuilder;
 use Nette\InvalidArgumentException;
 use Nette\SmartObject;
@@ -127,11 +127,10 @@ class Table
 			}
 		}
 
-		$query = $this->database->table( $this->name );
-
-		$where = implode(' = ? AND ', (array) $query->getPrimary() );
-
-		$row = $query->where("{$where} = ?", $key, ...$keys )->fetch();
+		$row = $this->database->table( $this->name )
+			->wherePrimary( $key, ...$keys )
+			->limit( 1 )
+			->fetch();
 
 		if( $this->options['cache'] and $row ) {
 			$this->results['row'][ $id ] = $row;
@@ -198,12 +197,13 @@ class Table
 
 	/**
 	 * @param ActiveRow $row
-	 * @param array $tables
+	 * @param string $table
+	 * @param string ...$tables
 	 * @return ActiveRow | null
 	 */
-	function refer( ActiveRow $row, array $tables ) : ?ActiveRow
+	function refer( ActiveRow $row, string $table, string ...$tables ) : ?ActiveRow
 	{
-		$rows = $this->relate( $row, $tables );
+		$rows = $this->relate( $row, $table, ...$tables );
 
 		foreach( $rows as $row ) {
 			return $row;
@@ -214,28 +214,26 @@ class Table
 
 	/**
 	 * @param ActiveRow $row
-	 * @param array $tables
+	 * @param string $table
+	 * @param string ...$tables
 	 * @return ActiveRow[]
 	 */
-	function relate( ActiveRow $row, array $tables ) : iterable
+	function relate( ActiveRow $row, string $table, string ...$tables ) : iterable
 	{
-		if( is_array( $value = $row->getPrimary() )) {
+		if( !is_scalar( $value = $row->getPrimary() ) and !is_object( $value )) {
 			throw new InvalidArgumentException('Row must have scalar primary key.');
-		} elseif( !$tables ) {
-			throw new InvalidArgumentException('Table must have a column name.');
+		} elseif( !is_string( $column = $this->database->getConventions()->getPrimary( $this->name ))) {
+			throw new InvalidArgumentException('Table must have scalar primary key.');
 		}
 
-		foreach( $tables as $table => $columns ) {
-			if( is_array( $columns )) {
-				$tables[ $table ] = array_fill_keys( $columns, $value );
-			} else {
-				$tables[ $table ] = [ $columns => $value ];
-			}
-		}
+		$column = "{$this->name}_{$column}";
+		$tables[] = $table;
 
-		$queue = new ModifyIterator( $tables, function( array $where, string $table ) {
+		$queue = new ModifyIterator( $tables, function( string $table ) use( $column, $value ) {
+			[ $table, $column ] = explode('.', $table, 2 ) + [ 1 => $column ];
+
 			return $this->database->table( $table )
-				->where($where )
+				->where("{$column} = ?", $value )
 				->limit( 1 )
 				->fetch();
 		});
