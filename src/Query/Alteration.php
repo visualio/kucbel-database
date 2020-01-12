@@ -23,7 +23,7 @@ trait Alteration
 	 * @param array $row
 	 * @return ActiveRow
 	 */
-	function createRow( array $row ) : Nette\Database\Table\ActiveRow
+	protected function createRow( array $row ) : Nette\Database\Table\ActiveRow
 	{
 		return new $this->record( $row, $this );
 	}
@@ -47,6 +47,39 @@ trait Alteration
 	{
 		/** @var Selection $this */
 		return new SelectionGroup(  $this->deposit, $this->context, $this->conventions, $this, $this->cache ? $this->cache->getStorage() : null, $table, $column );
+	}
+
+	/**
+	 * @param mixed $key
+	 * @param mixed ...$keys
+	 * @return $this
+	 */
+	function wherePrimary( $key, ...$keys )
+	{
+		$columns = (array) $this->getPrimary();
+
+		$where = implode(' = ? AND ', $columns );
+		$where = "{$where} = ?";
+
+		if( $keys ) {
+			return $this->where( $where, $key, ...$keys );
+		} elseif( is_array( $key )) {
+			if( is_string( key( $key ))) {
+				$map = [];
+
+				foreach( $columns as $column ) {
+					if( isset( $key[ $column ] )) {
+						$map[] = $key[ $column ];
+					}
+				}
+
+				$key = $map;
+			}
+
+			return $this->where( $where, ...$key );
+		} else {
+			return $this->where( $where, $key );
+		}
 	}
 
 	/**
