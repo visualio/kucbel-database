@@ -129,7 +129,6 @@ class Table
 
 		$row = $this->database->table( $this->name )
 			->wherePrimary( $key, ...$keys )
-			->limit( 1 )
 			->fetch();
 
 		if( $this->options['cache'] and $row ) {
