@@ -312,7 +312,7 @@ class Table
 			foreach( $where as $column => $param ) {
 				if( is_int( $column )) {
 					$query->where( $param );
-				} elseif( is_array( $param ) and array_key_exists( 0, $param ) and substr_count( $column, '?') > 1 ) {
+				} elseif( is_array( $param ) and substr_count( $column, '?') > 1 ) {
 					$query->where( $column, ...$param );
 				} else {
 					$query->where( $column, $param );
@@ -322,9 +322,11 @@ class Table
 
 		if( $order = $order ?? $this->defaults['order'] ?? null ) {
 			foreach( $order as $column => $param ) {
-				if( is_int( $column )) {
+				if( $param === 'ASC' or $param === 'DESC') {
+					$query->order("{$column} {$param}");
+				} elseif( is_int( $column )) {
 					$query->order( $param );
-				} elseif( is_array( $param ) and array_key_exists( 0, $param ) and substr_count( $column, '?') > 1 ) {
+				} elseif( is_array( $param ) and substr_count( $column, '?') > 1 ) {
 					$query->order( $column, ...$param );
 				} else {
 					$query->order( $column, $param );
