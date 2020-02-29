@@ -59,7 +59,7 @@ trait Alteration
 		$columns = (array) $this->getPrimary();
 
 		$where = implode(' = ? AND ', $columns );
-		$where = "{$where} = ?";
+		$where .= ' = ?';
 
 		if( $keys ) {
 			return $this->where( $where, $key, ...$keys );

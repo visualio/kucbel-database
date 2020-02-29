@@ -120,7 +120,7 @@ class Table
 	function find( $key, ...$keys ) : ?ActiveRow
 	{
 		if( $this->options['cache'] ) {
-			$id = $this->primary( $key, ...$keys );
+			$id = $this->getPrimary( $key, ...$keys );
 
 			if( isset( $this->results['row'][ $id ] )) {
 				return $this->results['row'][ $id ];
@@ -379,7 +379,7 @@ class Table
 	 */
 	function insertOne( array $values ) : int
 	{
-		$insert = $this->builder()->buildInsertQuery();
+		$insert = $this->getBuilder()->buildInsertQuery();
 		$insert .= ' ?values';
 
 		$count = $this->database->query( $insert, $values )->getRowCount();
@@ -396,7 +396,7 @@ class Table
 	{
 		$chunks = new ChunkIterator( $values, $batch ?? $this->options['insert'] );
 
-		$insert = $this->builder()->buildInsertQuery();
+		$insert = $this->getBuilder()->buildInsertQuery();
 		$insert .= ' ?values';
 
 		$count = 0;
@@ -406,16 +406,6 @@ class Table
 		}
 
 		return $count;
-	}
-
-	/**
-	 * @return int | null
-	 */
-	function insertId() : ?int
-	{
-		$id = (int) $this->database->getInsertId();
-
-		return $id ? $id : null;
 	}
 
 	/**
@@ -510,10 +500,24 @@ class Table
 	}
 
 	/**
+	 * @return int
+	 */
+	function getInsertId() : int
+	{
+		$id = (int) $this->database->getInsertId();
+
+		if( !$id ) {
+			throw new TableException("Table '{$this->name}' doesn't have auto increment.");
+		}
+
+		return $id;
+	}
+
+	/**
 	 * @param mixed ...$keys
 	 * @return string
 	 */
-	protected function primary( ...$keys ) : string
+	protected function getPrimary( ...$keys ) : string
 	{
 		return implode('|', $keys );
 	}
@@ -521,7 +525,7 @@ class Table
 	/**
 	 * @return SqlBuilder
 	 */
-	protected function builder() : SqlBuilder
+	protected function getBuilder() : SqlBuilder
 	{
 		return new SqlBuilder( $this->name, $this->database );
 	}
