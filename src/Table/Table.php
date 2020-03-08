@@ -6,6 +6,7 @@ use Kucbel\Database\Context;
 use Kucbel\Database\Query\Selection;
 use Kucbel\Database\Query\SelectionIterator;
 use Kucbel\Database\Row\MissingRowException;
+use Kucbel\Iterators\AppendIterator;
 use Kucbel\Iterators\ChunkIterator;
 use Kucbel\Iterators\FilterIterator;
 use Kucbel\Iterators\ModifyIterator;
@@ -219,16 +220,26 @@ class Table
 	 */
 	function relate( ActiveRow $row, string $table, string ...$tables ) : iterable
 	{
+		if( $column = $this->options['relate'] ?? null ) {
+			$detect = false;
+		} else {
+			$column = $this->database->getConventions()->getPrimary( $this->name );
+			$detect = true;
+		}
+
 		if( !is_scalar( $value = $row->getPrimary() ) and !is_object( $value )) {
 			throw new InvalidArgumentException('Row must have scalar primary key.');
-		} elseif( !is_string( $column = $this->database->getConventions()->getPrimary( $this->name ))) {
+		} elseif( !is_string( $column )) {
 			throw new InvalidArgumentException('Table must have scalar primary key.');
 		}
 
-		$column = "{$this->name}_{$column}";
-		$tables[] = $table;
+		if( $detect ) {
+			$column = "{$this->name}_{$column}";
+		}
 
-		$queue = new ModifyIterator( $tables, function( string $table ) use( $column, $value ) {
+		$queue = new AppendIterator([ $table ], $tables );
+
+		$queue = new ModifyIterator( $queue, function( string $table ) use( $column, $value ) {
 			[ $table, $column ] = explode('.', $table, 2 ) + [ 1 => $column ];
 
 			return $this->database->table( $table )
