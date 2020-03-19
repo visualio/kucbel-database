@@ -220,12 +220,7 @@ class Table
 	 */
 	function relate( ActiveRow $row, string $table, string ...$tables ) : iterable
 	{
-		if( $column = $this->options['relate'] ?? null ) {
-			$detect = false;
-		} else {
-			$column = $this->database->getConventions()->getPrimary( $this->name );
-			$detect = true;
-		}
+		$column = $this->options['relate'] ?? "{$this->name}_id";
 
 		if( !is_scalar( $value = $row->getPrimary() ) and !is_object( $value )) {
 			throw new InvalidArgumentException('Row must have scalar primary key.');
@@ -233,16 +228,12 @@ class Table
 			throw new InvalidArgumentException('Table must have scalar primary key.');
 		}
 
-		if( $detect ) {
-			$column = "{$this->name}_{$column}";
-		}
-
 		$queue = new AppendIterator([ $table ], $tables );
 
-		$queue = new ModifyIterator( $queue, function( string $table ) use( $column, $value ) {
-			[ $table, $column ] = explode('.', $table, 2 ) + [ 1 => $column ];
+		$queue = new ModifyIterator( $queue, function( &$search ) use( $column, $value ) {
+			[ $table, $column ] = explode('.', $search, 2 ) + [ 1 => $column ];
 
-			return $this->database->table( $table )
+			$search = $this->database->table( $table )
 				->where("{$column} = ?", $value )
 				->limit( 1 )
 				->fetch();
@@ -254,31 +245,22 @@ class Table
 	/**
 	 * @param Selection $query
 	 * @param array $array
-	 * @return array
+	 * @return ModifyIterator
 	 */
-	protected function list( Selection $query, array $array ) : array
+	protected function modify( Selection $query, array $array ) : iterable
 	{
-		if( is_string( $value = current( $array ))) {
-			$value = function( ActiveRow $row ) use( $value ) {
-				return $row->$value;
-			};
-		} else {
+		$index = key( $array );
+		$value = current( $array );
+		$assoc = is_string( $index );
+
+		if( !is_string( $value )) {
 			throw new InvalidArgumentException("Array must have string column name.");
 		}
 
-		if( is_string( $index = key( $array ))) {
-			$index = function( ActiveRow $row ) use( $index ) {
-				return $row->$index;
-			};
-		} else {
-			$index = function( $row, $id, $pos ) {
-				return $pos;
-			};
-		}
-
-		$query = new ModifyIterator( $query, $value, $index );
-
-		return $query->toArray();
+		return new ModifyIterator( $query, function( ActiveRow &$row, &$key, $num ) use( $value, $index, $assoc ) {
+			$key = $assoc ? $row->$index : $num;
+			$row = $row->$value;
+		});
 	}
 
 	/**
@@ -293,7 +275,7 @@ class Table
 	{
 		$query = $this->query( $where, $order, $limit, $offset );
 
-		return $this->list( $query, $array );
+		return $this->modify( $query, $array )->toArray();
 	}
 
 	/**
@@ -305,7 +287,7 @@ class Table
 	{
 		$query = $this->query( null, $order );
 
-		return $this->list( $query, $array );
+		return $this->modify( $query, $array )->toArray();
 	}
 
 	/**
