@@ -251,10 +251,15 @@ class Table
 	{
 		$index = key( $array );
 		$value = current( $array );
-		$assoc = is_string( $index );
 
 		if( !is_string( $value )) {
 			throw new InvalidArgumentException("Array must have string column name.");
+		}
+
+		if( $assoc = is_string( $index )) {
+			$query->select("{$value}, {$index}");
+		} else {
+			$query->select("{$value}");
 		}
 
 		return new ModifyIterator( $query, function( ActiveRow &$row, &$key, $num ) use( $value, $index, $assoc ) {
