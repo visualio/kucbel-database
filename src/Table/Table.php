@@ -343,15 +343,15 @@ class Table
 
 		$count = $this->database->query( $insert, $values )->getRowCount();
 
-		return $count;
+		return (int) $count;
 	}
 
 	/**
-	 * @param array $values
+	 * @param array[] $values
 	 * @param int $batch
 	 * @return int
 	 */
-	function insertMany( array $values, int $batch = null ) : int
+	function insertMany( iterable $values, int $batch = null ) : int
 	{
 		$chunks = new ChunkIterator( $values, $batch ?? $this->options['insert'] );
 
