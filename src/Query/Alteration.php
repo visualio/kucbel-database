@@ -5,6 +5,7 @@ namespace Kucbel\Database\Query;
 use JsonSerializable;
 use Kucbel\Database\Repository;
 use Kucbel\Database\Row\ActiveRow;
+use Nette\InvalidArgumentException;
 use Nette;
 
 trait Alteration
@@ -51,35 +52,35 @@ trait Alteration
 
 	/**
 	 * @param mixed $key
-	 * @param mixed ...$keys
 	 * @return $this
 	 */
-	function wherePrimary( $key, ...$keys )
+	function wherePrimary( $key )
 	{
-		$columns = (array) $this->getPrimary();
+		$col = $this->getPrimary();
 
-		$where = implode(' = ? AND ', $columns );
-		$where .= ' = ?';
-
-		if( $keys ) {
-			return $this->where( $where, $key, ...$keys );
-		} elseif( is_array( $key )) {
-			if( is_string( key( $key ))) {
-				$map = [];
-
-				foreach( $columns as $column ) {
-					if( isset( $key[ $column ] )) {
-						$map[] = $key[ $column ];
-					}
-				}
-
-				$key = $map;
+		if( is_array( $col )) {
+			if( !is_array( $key )) {
+				throw new InvalidArgumentException("Primary key must be an array.");
 			}
 
-			return $this->where( $where, ...$key );
+			foreach( $col as $i => $c ) {
+				$this->where( $c, $key[ $c ] ?? $key[ $i ] ?? null );
+			}
+		} elseif( is_array( $key )) {
+			if( is_array( $gey = $key[0] ?? null )) {
+				$key = $gey;
+			}
+
+			if( $key ) {
+				$this->where("{$col} IN ?", $key );
+			} else {
+				$this->where('0');
+			}
 		} else {
-			return $this->where( $where, $key );
+			$this->where( $col, $key );
 		}
+
+		return $this;
 	}
 
 	/**
