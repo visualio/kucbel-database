@@ -37,18 +37,12 @@ class Table
 		'select'	=> 100,
 		'insert'	=> 100,
 		'strict'	=> true,
-		'cache'		=> false,
 	];
 
 	/**
 	 * @var array
 	 */
 	protected $defaults = [];
-
-	/**
-	 * @var array
-	 */
-	protected $results = [];
 
 	/**
 	 * Table constructor.
@@ -79,14 +73,13 @@ class Table
 	}
 
 	/**
-	 * @param mixed $key
-	 * @param mixed ...$keys
+	 * @param mixed $id
 	 * @return ActiveRow
 	 * @throws MissingRowException
 	 */
-	function fetch( $key, ...$keys ) : ActiveRow
+	function fetch( $id ) : ActiveRow
 	{
-		$row = $this->find( $key, ...$keys );
+		$row = $this->find( $id );
 
 		if( !$row ) {
 			throw new MissingRowException("Row wasn't found.");
@@ -114,29 +107,14 @@ class Table
 	}
 
 	/**
-	 * @param mixed $key
-	 * @param mixed ...$keys
+	 * @param mixed $id
 	 * @return ActiveRow | null
 	 */
-	function find( $key, ...$keys ) : ?ActiveRow
+	function find( $id ) : ?ActiveRow
 	{
-		if( $this->options['cache'] ) {
-			$id = $this->getPrimary( $key, ...$keys );
-
-			if( isset( $this->results['row'][ $id ] )) {
-				return $this->results['row'][ $id ];
-			}
-		}
-
-		$row = $this->database->table( $this->name )
-			->wherePrimary( $key, ...$keys )
+		return $this->database->table( $this->name )
+			->wherePrimary( $id )
 			->fetch();
-
-		if( $this->options['cache'] and $row ) {
-			$this->results['row'][ $id ] = $row;
-		}
-
-		return $row;
 	}
 
 	/**
@@ -181,18 +159,7 @@ class Table
 	 */
 	function findAll( array $order = null ) : array
 	{
-		if( isset( $this->results['all'] ) and !$order ) {
-			return $this->results['row'];
-		}
-
-		$rows = $this->query( null, $order )->fetchAll();
-
-		if( $this->options['cache'] and !$order ) {
-			$this->results['all'] = true;
-			$this->results['row'] = $rows;
-		}
-
-		return $rows;
+		return $this->query( null, $order )->fetchAll();
 	}
 
 	/**
@@ -362,12 +329,6 @@ class Table
 			throw new TableException("Table '{$this->name}' didn't insert or return row.");
 		}
 
-		if( $this->options['cache'] ) {
-			$id = $row->getSignature();
-
-			$this->results['row'][ $id ] = $row;
-		}
-
 		return $row;
 	}
 
@@ -484,20 +445,6 @@ class Table
 	}
 
 	/**
-	 * @return bool
-	 */
-	function clear() : bool
-	{
-		if( $this->options['cache'] ) {
-			$this->results = null;
-
-			return true;
-		} else {
-			return false;
-		}
-	}
-
-	/**
 	 * @return int
 	 */
 	function getInsertId() : int
@@ -509,15 +456,6 @@ class Table
 		}
 
 		return $id;
-	}
-
-	/**
-	 * @param mixed ...$keys
-	 * @return string
-	 */
-	protected function getPrimary( ...$keys ) : string
-	{
-		return implode('|', $keys );
 	}
 
 	/**
