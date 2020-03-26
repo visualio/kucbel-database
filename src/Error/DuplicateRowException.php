@@ -1,10 +1,12 @@
 <?php
 
-namespace Kucbel\Database\Row;
+namespace Kucbel\Database\Error;
 
+use Kucbel\Database\Exception;
+use Kucbel\Database\Row\ActiveRow;
 use Throwable;
 
-class DuplicateRowException extends ActiveRowException
+class DuplicateRowException extends Exception
 {
 	/**
 	 * @var ActiveRow | null

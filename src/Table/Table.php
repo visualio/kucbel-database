@@ -3,9 +3,9 @@
 namespace Kucbel\Database\Table;
 
 use Kucbel\Database\Context;
+use Kucbel\Database\Error\MissingRowException;
 use Kucbel\Database\Query\Selection;
 use Kucbel\Database\Query\SelectionIterator;
-use Kucbel\Database\Row\MissingRowException;
 use Kucbel\Iterators\AppendIterator;
 use Kucbel\Iterators\ChunkIterator;
 use Kucbel\Iterators\FilterIterator;

@@ -5,7 +5,6 @@ namespace Kucbel\Database\Query;
 use JsonSerializable;
 use Kucbel\Database\Repository;
 use Kucbel\Database\Row\ActiveRow;
-use Nette\InvalidArgumentException;
 use Nette;
 
 trait Alteration
