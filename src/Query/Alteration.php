@@ -51,39 +51,6 @@ trait Alteration
 	}
 
 	/**
-	 * @param mixed $key
-	 * @return $this
-	 */
-	function wherePrimary( $key )
-	{
-		$col = $this->getPrimary();
-
-		if( is_array( $col )) {
-			if( !is_array( $key )) {
-				throw new InvalidArgumentException("Primary key must be an array.");
-			}
-
-			foreach( $col as $i => $c ) {
-				$this->where( $c, $key[ $c ] ?? $key[ $i ] ?? null );
-			}
-		} elseif( is_array( $key )) {
-			if( is_array( $gey = $key[0] ?? null )) {
-				$key = $gey;
-			}
-
-			if( $key ) {
-				$this->where("{$col} IN ?", $key );
-			} else {
-				$this->where('0');
-			}
-		} else {
-			$this->where( $col, $key );
-		}
-
-		return $this;
-	}
-
-	/**
 	 * @return mixed
 	 */
 	function jsonSerialize()
