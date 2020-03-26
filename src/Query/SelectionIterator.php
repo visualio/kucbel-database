@@ -61,12 +61,14 @@ class SelectionIterator implements Countable, Iterator
 			throw new InvalidArgumentException;
 		}
 
-		$order = $query->getSqlBuilder()->getOrder();
+		$build = $query->getSqlBuilder();
+		$order = $build->getOrder();
+		$table = $build->getTableName();
 
 		if( !$order ) {
-			$order = (array) $query->getPrimary();
+			$order = implode(", {$table}.", (array) $query->getPrimary() );
 
-			$query->order( implode(', ', $order ));
+			$query->order("{$table}.{$order}");
 		}
 
 		$this->query = $query;
