@@ -436,12 +436,11 @@ class Table
 	}
 
 	/**
-	 * @param array $order
 	 * @return int
 	 */
-	function deleteAll( array $order = null ) : int
+	function deleteAll() : int
 	{
-		return $this->query( null, $order )->delete();
+		return $this->query()->delete();
 	}
 
 	/**

@@ -152,11 +152,11 @@ abstract class EventTable extends Table
 	/**
 	 * @inheritDoc
 	 */
-	function deleteAll( array $order = null ) : int
+	function deleteAll() : int
 	{
 		$this->dispatch('pre-delete-all');
 
-		$delete = parent::deleteAll( $order );
+		$delete = parent::deleteAll();
 
 		$this->dispatch('post-delete-all', $delete );
 
