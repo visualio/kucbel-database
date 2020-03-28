@@ -229,6 +229,14 @@ class Table
 			$query->select("{$value}");
 		}
 
+		if( $trim = strrpos( $value, '.')) {
+			$value = substr( $value, $trim + 1 );
+		}
+
+		if( $assoc and $trim = strrpos( $index, '.')) {
+			$index = substr( $index, $trim + 1 );
+		}
+
 		return new ModifyIterator( $query, function( ActiveRow &$row, &$key, $num ) use( $value, $index, $assoc ) {
 			$key = $assoc ? $row->$index : $num;
 			$row = $row->$value;
