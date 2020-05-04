@@ -112,9 +112,13 @@ class Table
 	 */
 	function find( $id ) : ?ActiveRow
 	{
-		return $this->database->table( $this->name )
-			->wherePrimary( $id )
-			->fetch();
+		if( !is_string( $id ) and !is_int( $id ) and !is_object( $id )) {
+			return null;
+		} else {
+			return $this->database->table( $this->name )
+				->wherePrimary( $id )
+				->fetch();
+		}
 	}
 
 	/**
