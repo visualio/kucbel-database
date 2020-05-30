@@ -4,12 +4,18 @@ namespace Kucbel\Database\Query;
 
 use JsonSerializable;
 use Kucbel\Database\Repository;
+use Kucbel\Database\Row\ActiveRow;
 use Nette\Caching\IStorage;
 use Nette\Database\Context;
 use Nette\Database\IConventions;
 use Nette\Database\Table;
 use Nette\Database\Table\Selection;
 
+/**
+ * Class SelectionGroup
+ *
+ * @method ActiveRow|mixed fetch()
+ */
 class SelectionGroup extends Table\GroupedSelection implements JsonSerializable
 {
 	use Alteration;
