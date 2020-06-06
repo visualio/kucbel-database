@@ -14,7 +14,8 @@ use Nette\Database\Table\Selection;
 /**
  * Class SelectionGroup
  *
- * @method ActiveRow|mixed fetch()
+ * @method ActiveRow|mixed|null		fetch()
+ * @method ActiveRow|mixed			current()
  */
 class SelectionGroup extends Table\GroupedSelection implements JsonSerializable
 {

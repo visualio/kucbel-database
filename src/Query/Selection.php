@@ -14,7 +14,8 @@ use Nette\InvalidArgumentException;
 /**
  * Class Selection
  *
- * @method ActiveRow|mixed fetch()
+ * @method ActiveRow|mixed|null		fetch()
+ * @method ActiveRow|mixed			current()
  */
 class Selection extends Table\Selection implements JsonSerializable
 {
