@@ -6,7 +6,6 @@ use Kucbel\Database\Context;
 use Kucbel\Database\Error\MissingRowException;
 use Kucbel\Database\Query\Selection;
 use Kucbel\Database\Query\SelectionIterator;
-use Kucbel\Iterators\AppendIterator;
 use Kucbel\Iterators\ChunkIterator;
 use Kucbel\Iterators\FilterIterator;
 use Kucbel\Iterators\ModifyIterator;
@@ -112,13 +111,32 @@ class Table
 	 */
 	function find( $id ) : ?ActiveRow
 	{
-		if( !is_string( $id ) and !is_int( $id ) and !is_object( $id )) {
-			return null;
-		} else {
+		if( is_string( $id ) or is_int( $id )) {
 			return $this->database->table( $this->name )
 				->wherePrimary( $id )
 				->fetch();
+		} else {
+			return null;
 		}
+	}
+
+	/**
+	 * @param mixed ...$ids
+	 * @return array
+	 */
+	function fetchEnum( ...$ids ) : array
+	{
+		$rows = $this->findEnum( ...$ids );
+
+		foreach( $ids as $id ) {
+			if( !is_string( $id ) and !is_int( $id )) {
+				throw new MissingRowException;
+			} elseif( !isset( $rows[ $id ] )) {
+				throw new MissingRowException;
+			}
+		}
+
+		return $rows;
 	}
 
 	/**
@@ -129,32 +147,31 @@ class Table
 	 */
 	function findOne( array $where = null, array $order = null, bool $limit = false ) : ?ActiveRow
 	{
-		return $this->query( $where, $order, $limit ? 1 : null )->fetch();
+		return $this->query( $where, $order, $limit ? [ 1 ] : null )->fetch();
+	}
+
+	/**
+	 * @param array $where
+	 * @param array $order
+	 * @param array $limit
+	 * @return ActiveRow[]
+	 */
+	function findMany( array $where = null, array $order = null, array $limit = null ) : array
+	{
+		return $this->query( $where, $order, $limit )->fetchAll();
 	}
 
 	/**
 	 * @param array $where
 	 * @param array $order
 	 * @param int $limit
-	 * @param int $offset
 	 * @return ActiveRow[]
 	 */
-	function findMany( array $where = null, array $order = null, int $limit = null, int $offset = null ) : array
-	{
-		return $this->query( $where, $order, $limit, $offset )->fetchAll();
-	}
-
-	/**
-	 * @param array $where
-	 * @param array $order
-	 * @param int $fetch
-	 * @return ActiveRow[]
-	 */
-	function findLazy( array $where = null, array $order = null, int $fetch = null ) : iterable
+	function findLazy( array $where = null, array $order = null, int $limit = null ) : iterable
 	{
 		$query = $this->query( $where, $order );
 
-		return new SelectionIterator( $query, $fetch ?? $this->options['select'] );
+		return new SelectionIterator( $query, $limit ?? $this->options['select'] );
 	}
 
 	/**
@@ -167,121 +184,35 @@ class Table
 	}
 
 	/**
-	 * @param ActiveRow $row
-	 * @param string $table
-	 * @param string ...$tables
-	 * @return ActiveRow | null
+	 * @param mixed ...$ids
+	 * @return array
 	 */
-	function refer( ActiveRow $row, string $table, string ...$tables ) : ?ActiveRow
+	function findEnum( ...$ids ) : array
 	{
-		$rows = $this->relate( $row, $table, ...$tables );
+		$idx = [];
 
-		foreach( $rows as $row ) {
-			return $row;
+		foreach( $ids as $id ) {
+			if( is_string( $id ) or is_int( $id )) {
+				$idx[ $id ] = $id;
+			}
 		}
 
-		return null;
-	}
-
-	/**
-	 * @param ActiveRow $row
-	 * @param string $table
-	 * @param string ...$tables
-	 * @return ActiveRow[]
-	 */
-	function relate( ActiveRow $row, string $table, string ...$tables ) : iterable
-	{
-		$column = $this->options['relate'] ?? "{$this->name}_id";
-
-		if( !is_scalar( $value = $row->getPrimary() ) and !is_object( $value )) {
-			throw new InvalidArgumentException('Row must have scalar primary key.');
-		} elseif( !is_string( $column )) {
-			throw new InvalidArgumentException('Table must have scalar primary key.');
-		}
-
-		$queue = new AppendIterator([ $table ], $tables );
-
-		$queue = new ModifyIterator( $queue, function( &$search ) use( $column, $value ) {
-			[ $table, $column ] = explode('.', $search, 2 ) + [ 1 => $column ];
-
-			$search = $this->database->table( $table )
-				->where("{$column} = ?", $value )
-				->limit( 1 )
-				->fetch();
-		});
-
-		return new FilterIterator( $queue );
-	}
-
-	/**
-	 * @param Selection $query
-	 * @param array $array
-	 * @return ModifyIterator
-	 */
-	protected function modify( Selection $query, array $array ) : iterable
-	{
-		$index = key( $array );
-		$value = current( $array );
-
-		if( !is_string( $value )) {
-			throw new InvalidArgumentException("Array must have string column name.");
-		}
-
-		if( $assoc = is_string( $index )) {
-			$query->select("{$value}, {$index}");
+		if( $idx ) {
+			return $this->database->table( $this->name )
+				->wherePrimary( $idx )
+				->fetchAll();
 		} else {
-			$query->select("{$value}");
+			return [];
 		}
-
-		if( $trim = strrpos( $value, '.')) {
-			$value = substr( $value, $trim + 1 );
-		}
-
-		if( $assoc and $trim = strrpos( $index, '.')) {
-			$index = substr( $index, $trim + 1 );
-		}
-
-		return new ModifyIterator( $query, function( ActiveRow &$row, &$key, $num ) use( $value, $index, $assoc ) {
-			$key = $assoc ? $row->$index : $num;
-			$row = $row->$value;
-		});
-	}
-
-	/**
-	 * @param array $array
-	 * @param array $where
-	 * @param array $order
-	 * @param int $limit
-	 * @param int $offset
-	 * @return array
-	 */
-	function listMany( array $array, array $where = null, array $order = null, int $limit = null, int $offset = null ) : array
-	{
-		$query = $this->query( $where, $order, $limit, $offset );
-
-		return $this->modify( $query, $array )->toArray();
-	}
-
-	/**
-	 * @param array $array
-	 * @param array $order
-	 * @return array
-	 */
-	function listAll( array $array, array $order = null ) : array
-	{
-		$query = $this->query( null, $order );
-
-		return $this->modify( $query, $array )->toArray();
 	}
 
 	/**
 	 * @param array $where
 	 * @param array $order
-	 * @param int $limit
-	 * @param int $offset
+	 * @param array $limit
 	 * @return Selection
 	 */
-	function query( array $where = null, array $order = null, int $limit = null, int $offset = null ) : Selection
+	function query( array $where = null, array $order = null, array $limit = null ) : Selection
 	{
 		$query = $this->database->table( $this->name );
 
@@ -312,7 +243,7 @@ class Table
 		}
 
 		if( $limit = $limit ?? $this->defaults['limit'] ?? null ) {
-			$query->limit( $limit, $offset );
+			$query->limit( current( $limit ), key( $limit ));
 		}
 
 		return $query;
@@ -326,6 +257,120 @@ class Table
 	function count( array $where = null, string $column = '*') : int
 	{
 		return $this->query( $where )->count( $column );
+	}
+
+	/**
+	 * @param ActiveRow $row
+	 * @param string $name
+	 * @param string ...$names
+	 * @return ActiveRow | null
+	 */
+	function linkOne( ActiveRow $row, string $name, string ...$names ) : ?ActiveRow
+	{
+		$rows = $this->lookup( $row, $name, ...$names );
+
+		foreach( $rows as $row ) {
+			return $row;
+		}
+
+		return null;
+	}
+
+	/**
+	 * @param ActiveRow $row
+	 * @param string $name
+	 * @param string ...$names
+	 * @return ActiveRow[]
+	 */
+	function linkAll( ActiveRow $row, string $name, string ...$names ) : array
+	{
+		return $this->lookup( $row, $name, ...$names )->toArray();
+	}
+
+	/**
+	 * @param ActiveRow $row
+	 * @param string ...$names
+	 * @return FilterIterator & ActiveRow[]
+	 */
+	protected function lookup( ActiveRow $row, string ...$names ) : iterable
+	{
+		$column = $this->options['lookup'] ?? "{$this->name}_id";
+
+		if( !is_string( $value = $row->getPrimary() ) and !is_int( $value )) {
+			throw new InvalidArgumentException('Row must have scalar primary key.');
+		} elseif( !is_string( $column )) {
+			throw new InvalidArgumentException('Table must have scalar primary key.');
+		}
+
+		$queue = new ModifyIterator( $names, function( &$query ) use( $column, $value ) {
+			$table = explode('.', $query, 2 );
+			$table[1] = $table[1] ?? $column;
+
+			$query = $this->database->table( $table[0] )
+				->where("{$table[1]} = ?", $value )
+				->limit( 1 )
+				->fetch();
+		});
+
+		return new FilterIterator( $queue );
+	}
+
+	/**
+	 * @param array $array
+	 * @param array $where
+	 * @param array $order
+	 * @param array $limit
+	 * @return array
+	 */
+	function listMany( array $array, array $where = null, array $order = null, array $limit = null ) : array
+	{
+		return $this->format( $array, $where, $order, $limit );
+	}
+
+	/**
+	 * @param array $array
+	 * @param array $order
+	 * @return array
+	 */
+	function listAll( array $array, array $order = null ) : array
+	{
+		return $this->format( $array, null, $order );
+	}
+
+	/**
+	 * @param array $array
+	 * @param array $where
+	 * @param array $order
+	 * @param array $limit
+	 * @return array
+	 */
+	protected function format( array $array, array $where = null, array $order = null, array $limit = null ) : array
+	{
+		if( !is_string( $value = current( $array ))) {
+			throw new InvalidArgumentException("Array must contain string value.");
+		}
+
+		if( !is_string( $index = key( $array ))) {
+			$index = null;
+		}
+
+		$query = $this->query( $where, $order, $limit );
+
+		if( $index !== null ) {
+			$query->select("{$value}, {$index}");
+		} else {
+			$query->select( $value );
+		}
+
+		if( $trim = strrpos( $value, '.')) {
+			$value = substr( $value, $trim + 1 );
+		}
+
+		if( $index !== null and $trim = strrpos( $index, '.')) {
+			$index = substr( $index, $trim + 1 );
+		}
+
+		return $query->format([ $index ?? 0 => $value ]);
 	}
 
 	/**
@@ -406,7 +451,7 @@ class Table
 	 */
 	function updateMany( array $values, array $where = null, array $order = null, int $limit = null ) : int
 	{
-		return $this->query( $where, $order, $limit )->update( $values );
+		return $this->query( $where, $order, [ $limit ])->update( $values );
 	}
 
 	/**
@@ -444,7 +489,7 @@ class Table
 	 */
 	function deleteMany( array $where = null, array $order = null, int $limit = null ) : int
 	{
-		return $this->query( $where, $order, $limit )->delete();
+		return $this->query( $where, $order, [ $limit ])->delete();
 	}
 
 	/**
@@ -460,13 +505,13 @@ class Table
 	 */
 	function getInsertId() : int
 	{
-		$id = (int) $this->database->getInsertId();
+		$id = $this->database->getInsertId();
 
 		if( !$id ) {
 			throw new TableException("Table '{$this->name}' doesn't have auto increment.");
 		}
 
-		return $id;
+		return (int) $id;
 	}
 
 	/**

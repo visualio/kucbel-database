@@ -5,6 +5,8 @@ namespace Kucbel\Database\Query;
 use JsonSerializable;
 use Kucbel\Database\Repository;
 use Kucbel\Database\Row\ActiveRow;
+use Kucbel\Iterators\ModifyIterator;
+use Nette\InvalidArgumentException;
 use Nette;
 
 trait Alteration
@@ -47,6 +49,45 @@ trait Alteration
 	{
 		/** @var Selection $this */
 		return new SelectionGroup(  $this->deposit, $this->context, $this->conventions, $this, $this->cache ? $this->cache->getStorage() : null, $table, $column );
+	}
+
+	/**
+	 * @param array | string $array
+	 * @return array
+	 */
+	function format( $array ) : array
+	{
+		if( is_array( $array )) {
+			if( !is_string( $value = current( $array ))) {
+				throw new InvalidArgumentException("Array must contain string value.");
+			}
+
+			if( !is_string( $index = key( $array ))) {
+				$index = null;
+			}
+		} elseif( is_string( $array )) {
+			$value = $array;
+			$index = null;
+		} else {
+			throw new InvalidArgumentException("Format must be either string or array.");
+		}
+
+		if( $index === null ) {
+			$array = function( &$row, &$key, $num ) use( $value ) {
+				$key = $num;
+				$row = $row[ $value ];
+			};
+		} else {
+			$array = function( &$row, &$key ) use( $value, $index ) {
+				$key = $row[ $index ];
+				$row = $row[ $value ];
+			};
+		}
+
+		/** @var Selection $this */
+		$query = new ModifyIterator( $this, $array );
+
+		return $query->toArray();
 	}
 
 	/**
