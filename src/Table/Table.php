@@ -130,9 +130,9 @@ class Table
 
 		foreach( $ids as $id ) {
 			if( !is_string( $id ) and !is_int( $id )) {
-				throw new MissingRowException;
+				throw new MissingRowException("Key isn't valid.");
 			} elseif( !isset( $rows[ $id ] )) {
-				throw new MissingRowException;
+				throw new MissingRowException("Row wasn't found.");
 			}
 		}
 
@@ -294,20 +294,26 @@ class Table
 	 */
 	protected function lookup( ActiveRow $row, string ...$names ) : iterable
 	{
-		$column = $this->options['lookup'] ?? "{$this->name}_id";
-
-		if( !is_string( $value = $row->getPrimary() ) and !is_int( $value )) {
+		if( is_array( $param = $row->getPrimary() )) {
 			throw new InvalidArgumentException('Row must have scalar primary key.');
-		} elseif( !is_string( $column )) {
-			throw new InvalidArgumentException('Table must have scalar primary key.');
 		}
 
-		$queue = new ModifyIterator( $names, function( &$query ) use( $column, $value ) {
-			$table = explode('.', $query, 2 );
-			$table[1] = $table[1] ?? $column;
+		$schema = $this->database->getConventions();
 
-			$query = $this->database->table( $table[0] )
-				->where("{$table[1]} = ?", $value )
+		foreach( $names as $i => $name ) {
+			if( strpos( $name, '.')) {
+				$names[ $i ] = explode('.', $name, 2 );
+			} elseif( $join = $schema->getHasManyReference( $this->name, $name )){
+				$names[ $i ] = $join;
+			} else {
+				throw new InvalidArgumentException("Table doesn't have a reference to '{$name}'.");
+			}
+		}
+
+		$queue = new ModifyIterator( $names, function( &$value ) use( $param ) {
+			$value = $this->database->table( $value[0] )
+				->where("{$value[1]} = ?", $param )
+				->order( $value[1] )
 				->limit( 1 )
 				->fetch();
 		});
@@ -324,7 +330,7 @@ class Table
 	 */
 	function listMany( array $array, array $where = null, array $order = null, array $limit = null ) : array
 	{
-		return $this->format( $array, $where, $order, $limit );
+		return $this->select( $array, $where, $order, $limit );
 	}
 
 	/**
@@ -334,7 +340,7 @@ class Table
 	 */
 	function listAll( array $array, array $order = null ) : array
 	{
-		return $this->format( $array, null, $order );
+		return $this->select( $array, null, $order );
 	}
 
 	/**
@@ -344,10 +350,10 @@ class Table
 	 * @param array $limit
 	 * @return array
 	 */
-	protected function format( array $array, array $where = null, array $order = null, array $limit = null ) : array
+	protected function select( array $array, array $where = null, array $order = null, array $limit = null ) : array
 	{
 		if( !is_string( $value = current( $array ))) {
-			throw new InvalidArgumentException("Array must contain string value.");
+			throw new InvalidArgumentException("Array must contain string column name.");
 		}
 
 		if( !is_string( $index = key( $array ))) {
@@ -370,7 +376,7 @@ class Table
 			$index = substr( $index, $trim + 1 );
 		}
 
-		return $query->format([ $index ?? 0 => $value ]);
+		return $query->fetchPairs( $index, $value );
 	}
 
 	/**
