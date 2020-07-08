@@ -48,44 +48,75 @@ trait Alteration
 	protected function createGroupedSelectionInstance( $table, $column ) : Nette\Database\Table\GroupedSelection
 	{
 		/** @var Selection $this */
-		return new SelectionGroup(  $this->deposit, $this->context, $this->conventions, $this, $this->cache ? $this->cache->getStorage() : null, $table, $column );
+		return new SelectionGroup( $this->deposit, $this->context, $this->conventions, $this, $this->cache ? $this->cache->getStorage() : null, $table, $column );
 	}
 
 	/**
-	 * @param array | string $array
-	 * @return array
+	 * @param mixed $value
+	 * @return $this
 	 */
-	function format( $array ) : array
+	function wherePrimary( $value )
 	{
-		if( is_array( $array )) {
-			if( !is_string( $value = current( $array ))) {
-				throw new InvalidArgumentException("Array must contain string value.");
+		$column = $this->getPrimary();
+
+		if( is_array( $column )) {
+			if( !is_array( $value )) {
+				throw new InvalidArgumentException("Value must be an array.");
 			}
 
-			if( !is_string( $index = key( $array ))) {
-				$index = null;
+			if( $first = $value[ 0 ] ?? null and is_array( $first )) {
+				$this->where( $column, $value );
+			} else {
+				foreach( $column as $index => $name ) {
+					$this->where("{$this->name}.{$name}", $value[ $index ] ?? $value[ $name ] ?? null );
+				}
 			}
-		} elseif( is_string( $array )) {
-			$value = $array;
-			$index = null;
+		} elseif( is_array( $value )) {
+			if( $value ) {
+				foreach( $value as $name => $each ) {
+					if( !is_string( $name )) {
+						throw new InvalidArgumentException("Value must have string key.");
+					}
+
+					$this->where("{$this->name}.{$name}", $each );
+				}
+			} else {
+				$this->where('0');
+			}
 		} else {
-			throw new InvalidArgumentException("Format must be either string or array.");
+			$this->where("{$this->name}.{$column}", $value );
 		}
 
-		if( $index === null ) {
-			$array = function( &$row, &$key, $num ) use( $value ) {
-				$key = $num;
-				$row = $row[ $value ];
-			};
-		} else {
-			$array = function( &$row, &$key ) use( $value, $index ) {
+		return $this;
+	}
+
+	/**
+	 * @param string $index
+	 * @param string $value
+	 * @return array
+	 */
+	function fetchPairs( $index = null, $value = null ) : array
+	{
+		if( $index !== null and $value !== null ) {
+			$assoc = function( &$row, &$key ) use( $value, $index ) {
 				$key = $row[ $index ];
 				$row = $row[ $value ];
 			};
+		} elseif( $value !== null ) {
+			$assoc = function( &$row, &$key, $num ) use( $value ) {
+				$key = $num;
+				$row = $row[ $value ];
+			};
+		} elseif( $index !== null ) {
+			$assoc = function( $row, &$key ) use( $index ) {
+				$key = $row[ $index ];
+			};
+		} else {
+			throw new InvalidArgumentException("Index or value must be provided.");
 		}
 
 		/** @var Selection $this */
-		$query = new ModifyIterator( $this, $array );
+		$query = new ModifyIterator( $this, $assoc );
 
 		return $query->toArray();
 	}
