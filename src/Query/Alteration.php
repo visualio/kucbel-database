@@ -72,14 +72,12 @@ trait Alteration
 				}
 			}
 		} elseif( is_array( $value )) {
-			if( $value ) {
+			if( is_string( $index = key( $value ))) {
 				foreach( $value as $name => $each ) {
-					if( !is_string( $name )) {
-						throw new InvalidArgumentException("Value must have string key.");
-					}
-
 					$this->where("{$this->name}.{$name}", $each );
 				}
+			} elseif( is_int( $index )) {
+				$this->where("{$this->name}.{$column}", $value );
 			} else {
 				$this->where('0');
 			}
