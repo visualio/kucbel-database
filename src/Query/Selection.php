@@ -34,8 +34,17 @@ class Selection extends Table\Selection implements JsonSerializable
 	{
 		parent::__construct( $context, $conventions, $table, $storage );
 
-		$this->deposit = $repository;
-		$this->record = $repository->getClass( $table );
+		$this->repository = $repository;
+	}
+
+	/**
+	 * @return void
+	 */
+	protected function execute() : void
+	{
+		$this->detect();
+
+		parent::execute();
 	}
 
 	/**
@@ -45,9 +54,11 @@ class Selection extends Table\Selection implements JsonSerializable
 	 */
 	function select( $columns, ...$params )
 	{
-		if( $columns !== '*' and $columns !== "{$this->name}.*") {
-			$this->record = $this->deposit->getDefault();
+		if( !is_string( $columns )) {
+			throw new InvalidArgumentException("Column must be a string.");
 		}
+
+		$this->verify( $columns );
 
 		parent::select( $columns, ...$params );
 

@@ -6,20 +6,65 @@ use JsonSerializable;
 use Kucbel\Database\Repository;
 use Kucbel\Database\Row\ActiveRow;
 use Kucbel\Iterators\ModifyIterator;
-use Nette\InvalidArgumentException;
 use Nette;
+use Nette\InvalidArgumentException;
 
 trait Alteration
 {
 	/**
 	 * @var Repository
 	 */
-	protected $deposit;
+	protected $repository;
 
 	/**
-	 * @var string
+	 * @var string | null
 	 */
-	protected $record;
+	protected $instance;
+
+	/**
+	 * @var int
+	 */
+	protected $metadata = 0;
+
+	/**
+	 * @return void
+	 */
+	protected function detect() : void
+	{
+		if( !$this->instance ) {
+			if( $this->metadata === 0 or $this->metadata & 0b1 ) {
+				$this->instance = $this->repository->getClass( $this->name );
+			} else {
+				$this->instance = $this->repository->getDefault();
+			}
+		}
+	}
+
+	/**
+	 * @param string $columns
+	 */
+	protected function verify( string $columns ) : void
+	{
+		$this->instance = null;
+
+		if( $this->metadata & 0b1 ) {
+			return;
+		}
+
+		$columns = explode(',', $columns );
+
+		foreach( $columns as $column ) {
+			$column = trim( $column );
+
+			if( $column === '*' or $column === "{$this->name}.*") {
+				$this->metadata |= 0b1;
+
+				break;
+			}
+		}
+
+		$this->metadata |= 0b10;
+	}
 
 	/**
 	 * @param array $row
@@ -27,7 +72,7 @@ trait Alteration
 	 */
 	protected function createRow( array $row ) : Nette\Database\Table\ActiveRow
 	{
-		return new $this->record( $row, $this );
+		return new $this->instance( $row, $this );
 	}
 
 	/**
@@ -37,7 +82,7 @@ trait Alteration
 	function createSelectionInstance( string $table = null ) : Nette\Database\Table\Selection
 	{
 		/** @var Selection $this */
-		return new Selection( $this->deposit, $this->context, $this->conventions, $this->cache ? $this->cache->getStorage() : null, $table ?? $this->name );
+		return new Selection( $this->repository, $this->context, $this->conventions, $this->cache ? $this->cache->getStorage() : null, $table ?? $this->name );
 	}
 
 	/**
@@ -48,7 +93,7 @@ trait Alteration
 	protected function createGroupedSelectionInstance( $table, $column ) : Nette\Database\Table\GroupedSelection
 	{
 		/** @var Selection $this */
-		return new SelectionGroup( $this->deposit, $this->context, $this->conventions, $this, $this->cache ? $this->cache->getStorage() : null, $table, $column );
+		return new SelectionGroup( $this->repository, $this->context, $this->conventions, $this, $this->cache ? $this->cache->getStorage() : null, $table, $column );
 	}
 
 	/**

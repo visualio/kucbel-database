@@ -10,6 +10,7 @@ use Nette\Database\Context;
 use Nette\Database\IConventions;
 use Nette\Database\Table;
 use Nette\Database\Table\Selection;
+use Nette\InvalidArgumentException;
 
 /**
  * Class SelectionGroup
@@ -36,8 +37,17 @@ class SelectionGroup extends Table\GroupedSelection implements JsonSerializable
 	{
 		parent::__construct( $context, $conventions, $table, $column, $reference, $storage );
 
-		$this->deposit = $repository;
-		$this->record = $repository->getClass( $table );
+		$this->repository = $repository;
+	}
+
+	/**
+	 * @return void
+	 */
+	protected function execute() : void
+	{
+		$this->detect();
+		
+		parent::execute();
 	}
 
 	/**
@@ -47,13 +57,13 @@ class SelectionGroup extends Table\GroupedSelection implements JsonSerializable
 	 */
 	function select( $columns, ...$params )
 	{
-		if( $columns !== '*' and $columns !== "{$this->name}.*") {
-			$this->record = $this->deposit->getDefault();
-
-			parent::select( $columns, ...$params );
-		} else {
-			Selection::select("{$this->name}.*", ...$params );
+		if( !is_string( $columns )) {
+			throw new InvalidArgumentException("Column must be a string.");
 		}
+
+		$this->verify( $columns );
+
+		parent::select( $columns, ...$params );
 
 		return $this;
 	}
