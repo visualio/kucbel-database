@@ -42,10 +42,21 @@ trait Alteration
 
 	/**
 	 * @param string $columns
+	 * @param array $params
 	 */
-	protected function verify( string $columns ) : void
+	protected function verify( string $columns, array &$params ) : void
 	{
 		$this->instance = null;
+
+		$force = array_search('force!', $params, true );
+
+		if( $force !== false ) {
+			$this->metadata |= 0b11;
+
+			unset( $params[ $force ] );
+
+			return;
+		}
 
 		if( $this->metadata & 0b1 ) {
 			return;

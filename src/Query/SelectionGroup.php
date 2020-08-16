@@ -61,7 +61,7 @@ class SelectionGroup extends Table\GroupedSelection implements JsonSerializable
 			throw new InvalidArgumentException("Column must be a string.");
 		}
 
-		$this->verify( $columns );
+		$this->verify( $columns, $params );
 
 		parent::select( $columns, ...$params );
 
