@@ -98,26 +98,7 @@ class Table
 	{
 		$row = $this->findOne( $where, $order, $limit );
 
-		if( !$row ) {
-			throw new MissingRowException("Row wasn't found.");
-		}
-
 		return $row;
-	}
-
-	/**
-	 * @param mixed $id
-	 * @return ActiveRow | null
-	 */
-	function find( $id ) : ?ActiveRow
-	{
-		if( is_string( $id ) or is_int( $id )) {
-			return $this->database->table( $this->name )
-				->wherePrimary( $id )
-				->fetch();
-		} else {
-			return null;
-		}
 	}
 
 	/**
@@ -137,6 +118,21 @@ class Table
 		}
 
 		return $rows;
+	}
+
+	/**
+	 * @param mixed $id
+	 * @return ActiveRow | null
+	 */
+	function find( $id ) : ?ActiveRow
+	{
+		if( is_string( $id ) or is_int( $id )) {
+			return $this->database->table( $this->name )
+				->wherePrimary( $id )
+				->fetch();
+		} else {
+			return null;
+		}
 	}
 
 	/**
@@ -265,7 +261,7 @@ class Table
 	 * @param string ...$names
 	 * @return ActiveRow | null
 	 */
-	function linkOne( ActiveRow $row, string $name, string ...$names ) : ?ActiveRow
+	function existOne( ActiveRow $row, string $name, string ...$names ) : ?ActiveRow
 	{
 		$rows = $this->lookup( $row, $name, ...$names );
 
@@ -282,7 +278,7 @@ class Table
 	 * @param string ...$names
 	 * @return ActiveRow[]
 	 */
-	function linkAll( ActiveRow $row, string $name, string ...$names ) : array
+	function existMany( ActiveRow $row, string $name, string ...$names ) : array
 	{
 		return $this->lookup( $row, $name, ...$names )->toArray();
 	}
@@ -294,7 +290,7 @@ class Table
 	 */
 	protected function lookup( ActiveRow $row, string ...$names ) : iterable
 	{
-		if( is_array( $param = $row->getPrimary() )) {
+		if( is_array( $value = $row->getPrimary() )) {
 			throw new InvalidArgumentException('Row must have scalar primary key.');
 		}
 
@@ -310,10 +306,9 @@ class Table
 			}
 		}
 
-		$queue = new ModifyIterator( $names, function( &$value ) use( $param ) {
-			$value = $this->database->table( $value[0] )
-				->where("{$value[1]} = ?", $param )
-				->order( $value[1] )
+		$queue = new ModifyIterator( $names, function( &$query ) use( $value ) {
+			$query = $this->database->table( $query[0] )
+				->where("{$query[1]} = ?", $value )
 				->limit( 1 )
 				->fetch();
 		});
@@ -389,7 +384,7 @@ class Table
 		$row = $this->database->table( $this->name )->insert( $values );
 
 		if( !$row instanceof ActiveRow ) {
-			throw new TableException("Table '{$this->name}' didn't insert or return row.");
+			throw new TableException("Table '{$this->name}' didn't return row.");
 		}
 
 		return $row;
