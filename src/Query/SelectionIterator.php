@@ -58,7 +58,7 @@ class SelectionIterator implements Countable, Iterator
 	function __construct( Selection $query, int $limit = 100 )
 	{
 		if( $limit < 1 ) {
-			throw new InvalidArgumentException("Limit must be greater then zero.");
+			throw new InvalidArgumentException("Limit must be greater than zero.");
 		}
 
 		$build = $query->getSqlBuilder();

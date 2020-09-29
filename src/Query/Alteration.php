@@ -17,65 +17,9 @@ trait Alteration
 	protected $repository;
 
 	/**
-	 * @var string | null
+	 * @var string
 	 */
 	protected $instance;
-
-	/**
-	 * @var int
-	 */
-	protected $metadata = 0;
-
-	/**
-	 * @return void
-	 */
-	protected function detect() : void
-	{
-		if( !$this->instance ) {
-			if( $this->metadata === 0 or $this->metadata & 0b1 ) {
-				$this->instance = $this->repository->getClass( $this->name );
-			} else {
-				$this->instance = $this->repository->getDefault();
-			}
-		}
-	}
-
-	/**
-	 * @param string $columns
-	 * @param array $params
-	 */
-	protected function verify( string $columns, array &$params ) : void
-	{
-		$this->instance = null;
-
-		$force = array_search('force!', $params, true );
-
-		if( $force !== false ) {
-			$this->metadata |= 0b11;
-
-			unset( $params[ $force ] );
-
-			return;
-		}
-
-		if( $this->metadata & 0b1 ) {
-			return;
-		}
-
-		$columns = explode(',', $columns );
-
-		foreach( $columns as $column ) {
-			$column = trim( $column );
-
-			if( $column === '*' or $column === "{$this->name}.*") {
-				$this->metadata |= 0b1;
-
-				break;
-			}
-		}
-
-		$this->metadata |= 0b10;
-	}
 
 	/**
 	 * @param array $row
@@ -120,7 +64,7 @@ trait Alteration
 				throw new InvalidArgumentException("Value must be an array.");
 			}
 
-			if( $first = $value[ 0 ] ?? null and is_array( $first )) {
+			if( is_array( current( $value ))) {
 				$this->where( $column, $value );
 			} else {
 				foreach( $column as $index => $name ) {
