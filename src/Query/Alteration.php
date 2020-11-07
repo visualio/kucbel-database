@@ -59,6 +59,8 @@ trait Alteration
 	{
 		$column = $this->getPrimary();
 
+		$this->clrWhere();
+
 		if( is_array( $column )) {
 			if( !is_array( $value )) {
 				throw new InvalidArgumentException("Value must be an array.");
@@ -84,6 +86,72 @@ trait Alteration
 		} else {
 			$this->where("{$this->name}.{$column}", $value );
 		}
+
+		return $this;
+	}
+
+	/**
+	 * @return $this
+	 */
+	function clrSelect()
+	{
+		/** @var Selection $this */
+		Builder::clrSelect( $this->sqlBuilder );
+
+		return $this;
+	}
+
+	/**
+	 * @return $this
+	 */
+	function clrJoin()
+	{
+		/** @var Selection $this */
+		Builder::clrJoin( $this->sqlBuilder );
+
+		return $this;
+	}
+
+	/**
+	 * @return $this
+	 */
+	function clrWhere()
+	{
+		/** @var Selection $this */
+		Builder::clrWhere( $this->sqlBuilder );
+
+		return $this;
+	}
+
+	/**
+	 * @return $this
+	 */
+	function clrGroup()
+	{
+		/** @var Selection $this */
+		Builder::clrGroup( $this->sqlBuilder );
+
+		return $this;
+	}
+
+	/**
+	 * @return $this
+	 */
+	function clrHaving()
+	{
+		/** @var Selection $this */
+		Builder::clrHaving( $this->sqlBuilder );
+
+		return $this;
+	}
+
+	/**
+	 * @return $this
+	 */
+	function clrOrder()
+	{
+		/** @var Selection $this */
+		Builder::clrOrder( $this->sqlBuilder );
 
 		return $this;
 	}
