@@ -52,6 +52,14 @@ trait Alteration
 	}
 
 	/**
+	 * @return $this
+	 */
+	function clone()
+	{
+		return clone $this;
+	}
+
+	/**
 	 * @param mixed $value
 	 * @return $this
 	 */
