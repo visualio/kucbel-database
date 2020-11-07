@@ -39,6 +39,19 @@ class Selection extends Table\Selection implements JsonSerializable
 	}
 
 	/**
+	 * @param bool $clear
+	 * @param bool $cache
+	 */
+	protected function emptyResultSet( bool $clear = true, bool $cache = true ) : void
+	{
+		parent::emptyResultSet( $clear, $cache );
+
+		if( !$clear ) {
+			$this->sqlBuilder = new Table\SqlBuilder( $this->name, $this->context );
+		}
+	}
+
+	/**
 	 * @param string $columns
 	 * @param mixed ...$params
 	 * @return $this

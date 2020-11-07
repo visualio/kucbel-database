@@ -59,12 +59,6 @@ trait Alteration
 	{
 		$column = $this->getPrimary();
 
-		Builder::clrJoin( $this->sqlBuilder );
-		Builder::clrWhere( $this->sqlBuilder );
-		Builder::clrGroup( $this->sqlBuilder );
-		Builder::clrHaving( $this->sqlBuilder );
-		Builder::clrOrder( $this->sqlBuilder );
-
 		if( is_array( $column )) {
 			if( !is_array( $value )) {
 				throw new InvalidArgumentException("Value must be an array.");
