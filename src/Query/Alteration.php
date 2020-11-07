@@ -59,7 +59,7 @@ trait Alteration
 	{
 		$column = $this->getPrimary();
 
-		$this->clrWhere();
+		Builder::clrWhere( $this->sqlBuilder );
 
 		if( is_array( $column )) {
 			if( !is_array( $value )) {
@@ -67,7 +67,25 @@ trait Alteration
 			}
 
 			if( is_array( current( $value ))) {
-				$this->where( $column, $value );
+				$chain = [];
+
+				foreach( $value as $each ) {
+					$check = [];
+
+					foreach( $column as $index => $name ) {
+						$check[] = $each[ $index ] ?? $each[ $name ] ?? null;
+					}
+
+					$chain[] = $check;
+				}
+
+				foreach( $column as $index => $name ) {
+					$column[ $index ] = "{$this->name}.{$name}";
+				}
+
+				$column = implode(', ', $column );
+
+				$this->where("($column) IN ?", $chain );
 			} else {
 				foreach( $column as $index => $name ) {
 					$this->where("{$this->name}.{$name}", $value[ $index ] ?? $value[ $name ] ?? null );
@@ -86,72 +104,6 @@ trait Alteration
 		} else {
 			$this->where("{$this->name}.{$column}", $value );
 		}
-
-		return $this;
-	}
-
-	/**
-	 * @return $this
-	 */
-	function clrSelect()
-	{
-		/** @var Selection $this */
-		Builder::clrSelect( $this->sqlBuilder );
-
-		return $this;
-	}
-
-	/**
-	 * @return $this
-	 */
-	function clrJoin()
-	{
-		/** @var Selection $this */
-		Builder::clrJoin( $this->sqlBuilder );
-
-		return $this;
-	}
-
-	/**
-	 * @return $this
-	 */
-	function clrWhere()
-	{
-		/** @var Selection $this */
-		Builder::clrWhere( $this->sqlBuilder );
-
-		return $this;
-	}
-
-	/**
-	 * @return $this
-	 */
-	function clrGroup()
-	{
-		/** @var Selection $this */
-		Builder::clrGroup( $this->sqlBuilder );
-
-		return $this;
-	}
-
-	/**
-	 * @return $this
-	 */
-	function clrHaving()
-	{
-		/** @var Selection $this */
-		Builder::clrHaving( $this->sqlBuilder );
-
-		return $this;
-	}
-
-	/**
-	 * @return $this
-	 */
-	function clrOrder()
-	{
-		/** @var Selection $this */
-		Builder::clrOrder( $this->sqlBuilder );
 
 		return $this;
 	}
