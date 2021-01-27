@@ -110,9 +110,9 @@ class Table
 		$rows = $this->findEnum( ...$ids );
 
 		foreach( $ids as $id ) {
-			if( !is_string( $id ) and !is_int( $id )) {
-				throw new MissingRowException("Key isn't valid.");
-			} elseif( !isset( $rows[ $id ] )) {
+			$id = (string) $id;
+
+			if( !isset( $rows[ $id ] )) {
 				throw new MissingRowException("Row wasn't found.");
 			}
 		}
@@ -188,7 +188,7 @@ class Table
 		$idx = [];
 
 		foreach( $ids as $id ) {
-			if( is_string( $id ) or is_int( $id )) {
+			if( $id !== null ) {
 				$idx[ $id ] = $id;
 			}
 		}

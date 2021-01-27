@@ -142,23 +142,19 @@ trait Alteration
 	 */
 	function jsonSerialize()
 	{
-		$test = true;
 		$json = false;
 		$data = [];
 
 		/** @var Selection $this */
-		foreach( $this as $key => $row ) {
-			if( $test ) {
-				$test = false;
-				$json = $row instanceof JsonSerializable;
-			}
+		foreach( $this as $row ) {
+			$json = $row instanceof JsonSerializable;
 
-			if( $json ) {
-				/** @var JsonSerializable $row */
-				$data[ $key ] = $row->jsonSerialize();
-			} else {
-				$data[ $key ] = $row->toArray();
-			}
+			break;
+		}
+
+		/** @var JsonSerializable | ActiveRow $row */
+		foreach( $this as $key => $row ) {
+			$data[ $key ] = $json ? $row->jsonSerialize() : $row->toArray();
 		}
 
 		return $data;
