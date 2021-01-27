@@ -126,7 +126,7 @@ class Table
 	 */
 	function find( $id ) : ?ActiveRow
 	{
-		if( is_string( $id ) or is_int( $id )) {
+		if( $id !== null ) {
 			return $this->database->table( $this->name )
 				->wherePrimary( $id )
 				->fetch();
