@@ -66,6 +66,22 @@ abstract class EventTable extends Table
 	}
 
 	/**
+	 * @param array $values1
+	 * @param array $values2
+	 * @return int
+	 */
+	function insertKey( array $values1, array $values2 ) : int
+	{
+		$this->dispatch('pre-insert-key', $values1, $values2 );
+
+		$insert = parent::insertKey( $values1, $values2 );
+
+		$this->dispatch('post-insert-key', $insert );
+
+		return $insert;
+	}
+
+	/**
 	 * @inheritDoc
 	 */
 	function insertMany( iterable $values, int $batch = null ) : int

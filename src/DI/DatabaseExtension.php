@@ -51,8 +51,8 @@ class DatabaseExtension extends CompilerExtension
 
 			$factory = $service->getFactory();
 
-			$service->setType( Kucbel\Database\Context::class );
-			$service->setFactory( Kucbel\Database\Context::class, array_merge( $arguments, $factory->arguments ));
+			$service->setType( Kucbel\Database\Explorer::class );
+			$service->setFactory( Kucbel\Database\Explorer::class, array_merge( $arguments, $factory->arguments ));
 		}
 	}
 

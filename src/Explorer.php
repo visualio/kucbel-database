@@ -4,12 +4,12 @@ namespace Kucbel\Database;
 
 use Kucbel\Database\Query\Selection;
 use Nette;
-use Nette\Caching\IStorage;
+use Nette\Caching\Storage;
 use Nette\Database\Connection;
-use Nette\Database\IConventions;
+use Nette\Database\Conventions;
 use Nette\Database\IStructure;
 
-class Context extends Nette\Database\Context
+class Explorer extends Nette\Database\Explorer
 {
 	/**
 	 * @var Repository
@@ -17,12 +17,12 @@ class Context extends Nette\Database\Context
 	protected $deposit;
 
 	/**
-	 * @var IConventions | null
+	 * @var Conventions | null
 	 */
 	private $convert;
 
 	/**
-	 * @var IStorage | null
+	 * @var Storage | null
 	 */
 	private $storage;
 
@@ -32,10 +32,10 @@ class Context extends Nette\Database\Context
 	 * @param Repository	$repository
 	 * @param Connection	$connection
 	 * @param IStructure	$structure
-	 * @param IConventions	$conventions
-	 * @param IStorage		$storage
+	 * @param Conventions	$conventions
+	 * @param Storage		$storage
 	 */
-	function __construct( Repository $repository, Connection $connection, IStructure $structure, IConventions $conventions = null, IStorage $storage = null )
+	function __construct( Repository $repository, Connection $connection, IStructure $structure, Conventions $conventions = null, Storage $storage = null )
 	{
 		parent::__construct( $connection, $structure, $conventions, $storage );
 

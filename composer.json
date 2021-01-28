@@ -10,12 +10,13 @@
 	"require": {
 		"php": "^7.2",
 		"ext-json": "*",
-		"nette/database": "^3.0",
+		"nette/caching": "^3.1",
+		"nette/database": "^3.1",
 		"nette/di": "^3.0",
 		"nette/robot-loader": "^3.0",
 		"nette/utils": "^3.0",
 		"kucbel/iterators": "^1.0",
-		"kucbel/scalar": "^3.0"
+		"kucbel/scalar": "^3.1"
 	},
 	"autoload": {
 		"classmap": ["src"]

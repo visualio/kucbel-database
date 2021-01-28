@@ -2,8 +2,8 @@
 
 namespace Kucbel\Database\Table;
 
-use Kucbel\Database\Context;
 use Kucbel\Database\Error\MissingRowException;
+use Kucbel\Database\Explorer;
 use Kucbel\Database\Query\Selection;
 use Kucbel\Database\Query\SelectionIterator;
 use Kucbel\Iterators\ChunkIterator;
@@ -19,7 +19,7 @@ class Table
 	use SmartObject;
 
 	/**
-	 * @var Context
+	 * @var Explorer
 	 * @inject
 	 */
 	public $database;
@@ -400,6 +400,21 @@ class Table
 		$insert .= ' ?values';
 
 		$count = $this->database->query( $insert, $values )->getRowCount();
+
+		return (int) $count;
+	}
+
+	/**
+	 * @param array $values1
+	 * @param array $values2
+	 * @return int
+	 */
+	function insertKey( array $values1, array $values2 ) : int
+	{
+		$insert = $this->getBuilder()->buildInsertQuery();
+		$insert .= ' ?values ON DUPLICATE KEY UPDATE ?set';
+
+		$count = $this->database->query( $insert, $values1, $values2 )->getRowCount();
 
 		return (int) $count;
 	}

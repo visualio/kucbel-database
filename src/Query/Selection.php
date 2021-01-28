@@ -3,11 +3,11 @@
 namespace Kucbel\Database\Query;
 
 use JsonSerializable;
+use Kucbel\Database\Explorer;
 use Kucbel\Database\Repository;
 use Kucbel\Database\Row\ActiveRow;
-use Nette\Caching\IStorage;
-use Nette\Database\Context;
-use Nette\Database\IConventions;
+use Nette\Caching\Storage;
+use Nette\Database\Conventions;
 use Nette\Database\Table;
 use Nette\InvalidArgumentException;
 
@@ -25,14 +25,14 @@ class Selection extends Table\Selection implements JsonSerializable
 	 * Selection constructor.
 	 *
 	 * @param Repository		$repository
-	 * @param Context			$context
-	 * @param IConventions		$conventions
-	 * @param IStorage | null	$storage
+	 * @param Explorer			$explorer
+	 * @param Conventions		$conventions
+	 * @param Storage | null	$storage
 	 * @param string			$table
 	 */
-	function __construct( Repository $repository, Context $context, IConventions $conventions, ?IStorage $storage, string $table )
+	function __construct( Repository $repository, Explorer $explorer, Conventions $conventions, ?Storage $storage, string $table )
 	{
-		parent::__construct( $context, $conventions, $table, $storage );
+		parent::__construct( $explorer, $conventions, $table, $storage );
 
 		$this->repository = $repository;
 		$this->instance = $repository->getClass( $table );
