@@ -10,7 +10,6 @@ use Kucbel\Iterators\ChunkIterator;
 use Kucbel\Iterators\FilterIterator;
 use Kucbel\Iterators\ModifyIterator;
 use Nette\Database\Table\ActiveRow;
-use Nette\Database\Table\SqlBuilder;
 use Nette\InvalidArgumentException;
 use Nette\SmartObject;
 
@@ -22,12 +21,17 @@ class Table
 	 * @var Explorer
 	 * @inject
 	 */
-	public $database;
+	public $explorer;
 
 	/**
 	 * @var string
 	 */
 	protected $name;
+
+	/**
+	 * @var string | null
+	 */
+	protected $quote;
 
 	/**
 	 * @var array
@@ -72,6 +76,14 @@ class Table
 	}
 
 	/**
+	 * @return string
+	 */
+	function getQuotedName() : string
+	{
+		return $this->quote ?? $this->quote = $this->explorer->getConnection()->getDriver()->delimite( $this->name );
+	}
+
+	/**
 	 * @param mixed $id
 	 * @return ActiveRow
 	 * @throws MissingRowException
@@ -97,6 +109,10 @@ class Table
 	function fetchOne( array $where = null, array $order = null, bool $limit = false ) : ActiveRow
 	{
 		$row = $this->findOne( $where, $order, $limit );
+
+		if( !$row ) {
+			throw new MissingRowException("Row wasn't found.");
+		}
 
 		return $row;
 	}
@@ -127,7 +143,7 @@ class Table
 	function find( $id ) : ?ActiveRow
 	{
 		if( $id !== null ) {
-			return $this->database->table( $this->name )
+			return $this->explorer->table( $this->name )
 				->wherePrimary( $id )
 				->fetch();
 		} else {
@@ -194,7 +210,7 @@ class Table
 		}
 
 		if( $idx ) {
-			return $this->database->table( $this->name )
+			return $this->explorer->table( $this->name )
 				->wherePrimary( $idx )
 				->fetchAll();
 		} else {
@@ -210,7 +226,7 @@ class Table
 	 */
 	function query( array $where = null, array $order = null, array $limit = null ) : Selection
 	{
-		$query = $this->database->table( $this->name );
+		$query = $this->explorer->table( $this->name );
 
 		if( $where = $where ?? $this->defaults['where'] ?? null ) {
 			foreach( $where as $column => $param ) {
@@ -294,7 +310,7 @@ class Table
 			throw new InvalidArgumentException('Row must have scalar primary key.');
 		}
 
-		$schema = $this->database->getConventions();
+		$schema = $this->explorer->getConventions();
 
 		foreach( $names as $i => $name ) {
 			if( strpos( $name, '.')) {
@@ -307,7 +323,7 @@ class Table
 		}
 
 		$queue = new ModifyIterator( $names, function( &$query ) use( $value ) {
-			$query = $this->database->table( $query[0] )
+			$query = $this->explorer->table( $query[0] )
 				->where("{$query[1]} = ?", $value )
 				->limit( 1 )
 				->fetch();
@@ -381,7 +397,7 @@ class Table
 	 */
 	function insert( array $values ) : ActiveRow
 	{
-		$row = $this->database->table( $this->name )->insert( $values );
+		$row = $this->explorer->table( $this->name )->insert( $values );
 
 		if( !$row instanceof ActiveRow ) {
 			throw new TableException("Table '{$this->name}' didn't return row.");
@@ -396,10 +412,9 @@ class Table
 	 */
 	function insertOne( array $values ) : int
 	{
-		$insert = $this->getBuilder()->buildInsertQuery();
-		$insert .= ' ?values';
+		$insert = "INSERT INTO {$this->getQuotedName()} ?values";
 
-		$count = $this->database->query( $insert, $values )->getRowCount();
+		$count = $this->explorer->query( $insert, $values )->getRowCount();
 
 		return (int) $count;
 	}
@@ -411,10 +426,9 @@ class Table
 	 */
 	function insertKey( array $values1, array $values2 ) : int
 	{
-		$insert = $this->getBuilder()->buildInsertQuery();
-		$insert .= ' ?values ON DUPLICATE KEY UPDATE ?set';
+		$insert = "INSERT INTO {$this->getQuotedName()} ?values ON DUPLICATE KEY UPDATE ?set";
 
-		$count = $this->database->query( $insert, $values1, $values2 )->getRowCount();
+		$count = $this->explorer->query( $insert, $values1, $values2 )->getRowCount();
 
 		return (int) $count;
 	}
@@ -428,13 +442,12 @@ class Table
 	{
 		$chunks = new ChunkIterator( $values, $batch ?? $this->options['insert'] );
 
-		$insert = $this->getBuilder()->buildInsertQuery();
-		$insert .= ' ?values';
+		$insert = "INSERT INTO {$this->getQuotedName()} ?values";
 
 		$count = 0;
 
 		foreach( $chunks as $chunk ) {
-			$count += $this->database->query( $insert, $chunk )->getRowCount();
+			$count += $this->explorer->query( $insert, $chunk )->getRowCount();
 		}
 
 		return $count;
@@ -521,20 +534,12 @@ class Table
 	 */
 	function getInsertId() : int
 	{
-		$id = $this->database->getInsertId();
+		$id = $this->explorer->getInsertId();
 
 		if( !$id ) {
 			throw new TableException("Table '{$this->name}' doesn't have auto increment.");
 		}
 
 		return (int) $id;
-	}
-
-	/**
-	 * @return SqlBuilder
-	 */
-	protected function getBuilder() : SqlBuilder
-	{
-		return new SqlBuilder( $this->name, $this->database );
 	}
 }

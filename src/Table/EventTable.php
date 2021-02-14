@@ -3,7 +3,6 @@
 namespace Kucbel\Database\Table;
 
 use Nette\Database\Table\ActiveRow;
-use Nette\Utils\Callback;
 
 abstract class EventTable extends Table
 {
@@ -19,7 +18,7 @@ abstract class EventTable extends Table
 	 */
 	function subscribe( string $event, callable $method )
 	{
-		$this->listens[ $event ][] = Callback::check( $method );
+		$this->listens[ $event ][] = $method;
 
 		return $this;
 	}
@@ -142,11 +141,13 @@ abstract class EventTable extends Table
 	 */
 	function delete( ActiveRow $row ) : bool
 	{
+		$key = $row->getPrimary();
+
 		$this->dispatch('pre-delete', $row );
 
 		$delete = parent::delete( $row );
 
-		$this->dispatch('post-delete', $delete );
+		$this->dispatch('post-delete', $key, $delete );
 
 		return $delete;
 	}
