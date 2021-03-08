@@ -5,12 +5,13 @@ namespace Kucbel\Database\Row;
 use JsonSerializable;
 use Kucbel\Database\Query\SelectionGroup;
 use Nette;
+use Nette\InvalidStateException;
 
 /**
  * Class ActiveRow
  *
  * @method SelectionGroup		related( string $table, string $column = null )
- * @method ActiveRow|mixed|null	ref( string $key, string $throughColumn = null )
+ * @method ActiveRow|mixed|null	ref( string $table, string $column = null )
  */
 class ActiveRow extends Nette\Database\Table\ActiveRow implements JsonSerializable
 {
@@ -27,7 +28,7 @@ class ActiveRow extends Nette\Database\Table\ActiveRow implements JsonSerializab
 			->fetch();
 
 		if( !$clone instanceof $this ) {
-			throw new Nette\InvalidStateException('Database refetch failed; row does not exist!');
+			throw new InvalidStateException('Database refetch failed; row does not exist!');
 		}
 
 		return $clone;

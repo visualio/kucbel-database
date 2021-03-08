@@ -2,39 +2,12 @@
 
 namespace Kucbel\Database\Table;
 
+use Kucbel\Database\Trigger;
 use Nette\Database\Table\ActiveRow;
 
 abstract class EventTable extends Table
 {
-	/**
-	 * @var array
-	 */
-	private $listens;
-
-	/**
-	 * @param string $event
-	 * @param callable $method
-	 * @return $this
-	 */
-	function subscribe( string $event, callable $method )
-	{
-		$this->listens[ $event ][] = $method;
-
-		return $this;
-	}
-
-	/**
-	 * @param string $event
-	 * @param mixed ...$values
-	 */
-	protected function dispatch( string $event, &...$values ) : void
-	{
-		if( $listens = $this->listens[ $event ] ?? null ) {
-			foreach( $listens as $listen ) {
-				$listen( ...$values );
-			}
-		}
-	}
+	use Trigger;
 
 	/**
 	 * @inheritDoc
