@@ -28,7 +28,7 @@ class DatabaseExtension extends CompilerExtension
 			->setArguments([ $config['classes'], $config['default'] ]);
 
 		$builder->addDefinition( $this->prefix('transaction'))
-			->setType( Kucbel\Database\Utils\Transaction::class );
+			->setType( Kucbel\Database\Transaction::class );
 
 		$builder->addFactoryDefinition( $this->prefix('table'))
 			->setImplement( Kucbel\Database\Table\TableFactory::class )
