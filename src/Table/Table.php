@@ -118,7 +118,7 @@ class Table
 	}
 
 	/**
-	 * @param mixed ...$ids
+	 * @param string | int ...$ids
 	 * @return array
 	 */
 	function fetchEnum( ...$ids ) : array
@@ -196,7 +196,7 @@ class Table
 	}
 
 	/**
-	 * @param mixed ...$ids
+	 * @param string | int ...$ids
 	 * @return array
 	 */
 	function findEnum( ...$ids ) : array
@@ -205,13 +205,13 @@ class Table
 
 		foreach( $ids as $id ) {
 			if( $id !== null ) {
-				$idx[ $id ] = $id;
+				$idx[ (string) $id ] = $id;
 			}
 		}
 
 		if( $idx ) {
 			return $this->explorer->table( $this->name )
-				->wherePrimary( $idx )
+				->wherePrimary( array_values( $idx ))
 				->fetchAll();
 		} else {
 			return [];
@@ -527,6 +527,14 @@ class Table
 	function deleteAll() : int
 	{
 		return $this->query()->delete();
+	}
+
+	/**
+	 * @return void
+	 */
+	function reset() : void
+	{
+		$this->explorer->query("TRUNCATE {$this->getQuotedName()}");
 	}
 
 	/**
