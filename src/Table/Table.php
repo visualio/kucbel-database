@@ -4,6 +4,7 @@ namespace Kucbel\Database\Table;
 
 use Kucbel\Database\Error\MissingRowException;
 use Kucbel\Database\Explorer;
+use Kucbel\Database\Literal;
 use Kucbel\Database\Query\Selection;
 use Kucbel\Database\Query\SelectionIterator;
 use Kucbel\Iterators\ChunkIterator;
@@ -527,6 +528,31 @@ class Table
 	function deleteAll() : int
 	{
 		return $this->query()->delete();
+	}
+
+	/**
+	 * @param array $values
+	 * @param array $where
+	 * @param array $order
+	 * @param int $limit
+	 * @return int
+	 */
+	function adjust( array $values, array $where = null, array $order = null, int $limit = null ) : int
+	{
+		foreach( $values as $field => $value ) {
+			if( $value > 0 ) {
+				$equal = '+';
+			} elseif( $value < 0 ) {
+				$equal = '-';
+				$value = - $value;
+			} else {
+				throw new InvalidArgumentException("Value can't be zero.");
+			}
+
+			$values[ $field ] = new Literal("?name {$equal} ?", $field, $value );
+		}
+
+		return $this->updateMany( $values, $where, $order, $limit );
 	}
 
 	/**
