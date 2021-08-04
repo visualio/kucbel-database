@@ -8,13 +8,16 @@
 		"homepage": "https://bitbucket.org/kucbel/"
 	}],
 	"require": {
-		"php": "^7.2",
+		"php": ">= 7.4",
+
 		"ext-json": "*",
+
 		"nette/caching": "^3.1",
 		"nette/database": "^3.1",
 		"nette/di": "^3.0",
 		"nette/robot-loader": "^3.0",
 		"nette/utils": "^3.1",
+
 		"kucbel/iterators": "^1.0",
 		"kucbel/scalar": "^3.0"
 	},
