@@ -540,16 +540,18 @@ class Table
 	function adjust( array $values, array $where = null, array $order = null, int $limit = null ) : int
 	{
 		foreach( $values as $field => $value ) {
-			if( $value > 0 ) {
-				$equal = '+';
-			} elseif( $value < 0 ) {
-				$equal = '-';
-				$value = - $value;
-			} else {
-				throw new InvalidArgumentException("Value can't be zero.");
-			}
+			if( is_int( $value ) or is_float( $value )) {
+				if( $value > 0 ) {
+					$equal = '+';
+				} elseif( $value < 0 ) {
+					$equal = '-';
+					$value = - $value;
+				} else {
+					throw new InvalidArgumentException("Value can't be zero.");
+				}
 
-			$values[ $field ] = new Literal("?name {$equal} ?", $field, $value );
+				$values[ $field ] = new Literal("?name {$equal} ?", $field, $value );
+			}
 		}
 
 		return $this->updateMany( $values, $where, $order, $limit );
