@@ -27,10 +27,11 @@ class Table
 	/**
 	 * @var string
 	 */
-	protected $name;
+	protected $table;
 
 	/**
 	 * @var string | null
+	 * @deprecated
 	 */
 	protected $quote;
 
@@ -51,13 +52,13 @@ class Table
 	/**
 	 * Table constructor.
 	 *
-	 * @param string $name
+	 * @param string $table
 	 * @param array $options
 	 * @param array $defaults
 	 */
-	function __construct( string $name, array $options = null, array $defaults = null )
+	function __construct( string $table, array $options = null, array $defaults = null )
 	{
-		$this->name = $name;
+		$this->table = $table;
 
 		if( $options ) {
 			$this->options = $options + $this->options;
@@ -71,17 +72,27 @@ class Table
 	/**
 	 * @return string
 	 */
-	function getName() : string
+	function getTable() : string
 	{
-		return $this->name;
+		return $this->table;
 	}
 
 	/**
 	 * @return string
+	 * @deprecated
+	 */
+	function getName() : string
+	{
+		return $this->table;
+	}
+
+	/**
+	 * @return string
+	 * @deprecated
 	 */
 	function getQuotedName() : string
 	{
-		return $this->quote ?? $this->quote = $this->explorer->getConnection()->getDriver()->delimite( $this->name );
+		return $this->quote ?? $this->quote = $this->explorer->getConnection()->getDriver()->delimite( $this->table );
 	}
 
 	/**
@@ -144,7 +155,7 @@ class Table
 	function find( $id ) : ?ActiveRow
 	{
 		if( $id !== null ) {
-			return $this->explorer->table( $this->name )
+			return $this->explorer->table( $this->table )
 				->wherePrimary( $id )
 				->fetch();
 		} else {
@@ -211,7 +222,7 @@ class Table
 		}
 
 		if( $idx ) {
-			return $this->explorer->table( $this->name )
+			return $this->explorer->table( $this->table )
 				->wherePrimary( array_values( $idx ))
 				->fetchAll();
 		} else {
@@ -227,7 +238,7 @@ class Table
 	 */
 	function query( array $where = null, array $order = null, array $limit = null ) : Selection
 	{
-		$query = $this->explorer->table( $this->name );
+		$query = $this->explorer->table( $this->table );
 
 		if( $where = $where ?? $this->defaults['where'] ?? null ) {
 			foreach( $where as $column => $param ) {
@@ -316,10 +327,10 @@ class Table
 		foreach( $names as $i => $name ) {
 			if( strpos( $name, '.')) {
 				$names[ $i ] = explode('.', $name, 2 );
-			} elseif( $join = $schema->getHasManyReference( $this->name, $name )){
+			} elseif( $join = $schema->getHasManyReference( $this->table, $name )){
 				$names[ $i ] = $join;
 			} else {
-				throw new InvalidArgumentException("Table doesn't have a reference to '{$name}'.");
+				throw new InvalidArgumentException("Table \"{$this->table}\" doesn't have a reference to \"{$name}\".");
 			}
 		}
 
@@ -398,10 +409,10 @@ class Table
 	 */
 	function insert( array $values ) : ActiveRow
 	{
-		$row = $this->explorer->table( $this->name )->insert( $values );
+		$row = $this->explorer->table( $this->table )->insert( $values );
 
 		if( !$row instanceof ActiveRow ) {
-			throw new TableException("Table '{$this->name}' didn't return row.");
+			throw new TableException("Table \"{$this->table}\" didn't return row.");
 		}
 
 		return $row;
@@ -413,9 +424,7 @@ class Table
 	 */
 	function insertOne( array $values ) : int
 	{
-		$insert = "INSERT INTO {$this->getQuotedName()} ?values";
-
-		$count = $this->explorer->query( $insert, $values )->getRowCount();
+		$count = $this->explorer->query('INSERT INTO ?name ?values', $this->table, $values )->getRowCount();
 
 		return (int) $count;
 	}
@@ -427,9 +436,7 @@ class Table
 	 */
 	function insertKey( array $values1, array $values2 ) : int
 	{
-		$insert = "INSERT INTO {$this->getQuotedName()} ?values ON DUPLICATE KEY UPDATE ?set";
-
-		$count = $this->explorer->query( $insert, $values1, $values2 )->getRowCount();
+		$count = $this->explorer->query('INSERT INTO ?name ?values ON DUPLICATE KEY UPDATE ?set', $this->table, $values1, $values2 )->getRowCount();
 
 		return (int) $count;
 	}
@@ -442,13 +449,10 @@ class Table
 	function insertMany( iterable $values, int $batch = null ) : int
 	{
 		$chunks = new ChunkIterator( $values, $batch ?? $this->options['insert'] );
-
-		$insert = "INSERT INTO {$this->getQuotedName()} ?values";
-
 		$count = 0;
 
 		foreach( $chunks as $chunk ) {
-			$count += $this->explorer->query( $insert, $chunk )->getRowCount();
+			$count += $this->explorer->query('INSERT INTO ?name ?values', $this->table, $chunk )->getRowCount();
 		}
 
 		return $count;
@@ -466,7 +470,7 @@ class Table
 		$ok = $row->update( $values );
 
 		if( $this->options['strict'] and !$ok ) {
-			throw new TableException("Table '{$this->name}' didn't update row #{$id}.");
+			throw new TableException("Table '{$this->table}' didn't update row #{$id}.");
 		}
 
 		return $ok;
@@ -505,7 +509,7 @@ class Table
 		$ok = $row->delete();
 
 		if( $this->options['strict'] and !$ok ) {
-			throw new TableException("Table '{$this->name}' didn't delete row #{$id}.");
+			throw new TableException("Table '{$this->table}' didn't delete row #{$id}.");
 		}
 
 		return $ok;
@@ -562,7 +566,7 @@ class Table
 	 */
 	function reset() : void
 	{
-		$this->explorer->query("TRUNCATE {$this->getQuotedName()}");
+		$this->explorer->query('TRUNCATE ?name', $this->table );
 	}
 
 	/**
@@ -573,7 +577,7 @@ class Table
 		$id = $this->explorer->getInsertId();
 
 		if( !$id ) {
-			throw new TableException("Table '{$this->name}' doesn't have auto increment.");
+			throw new TableException("Table \"{$this->table}\" doesn't have auto increment.");
 		}
 
 		return (int) $id;
