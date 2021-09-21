@@ -562,6 +562,24 @@ class Table
 	}
 
 	/**
+	 * @param bool $read
+	 */
+	function lock( bool $read = false ) : void
+	{
+		$mode = $read ? 'READ' : 'WRITE';
+
+		$this->explorer->query("LOCK TABLES ?name {$mode}", $this->table );
+	}
+
+	/**
+	 * @return void
+	 */
+	function unlock() : void
+	{
+		$this->explorer->query('UNLOCK TABLES');
+	}
+
+	/**
 	 * @return void
 	 */
 	function reset() : void
