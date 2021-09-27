@@ -6,6 +6,7 @@ use Nette\Database\Connection;
 use Nette\InvalidStateException;
 use Nette\SmartObject;
 use Throwable;
+use Tracy\ILogger;
 
 class Transaction
 {
@@ -15,6 +16,11 @@ class Transaction
 	 * @var Connection
 	 */
 	private $connection;
+
+	/**
+	 * @var ILogger | null
+	 */
+	private $logger;
 
 	/**
 	 * @var bool
@@ -55,6 +61,10 @@ class Transaction
 			$result = $callback( ...$arguments );
 		} catch( Throwable $error ) {
 			$this->revert();
+
+			if( $this->logger ) {
+				$this->logger->log( $error, ILogger::EXCEPTION );
+			}
 
 			throw $error;
 		}
@@ -116,12 +126,20 @@ class Transaction
 	}
 
 	/**
-	 * @throws TransactionException
+	 * @throws
 	 */
 	function ensure() : void
 	{
 		if( !$this->active ) {
-			throw new TransactionException("Transaction is required.");
+			throw new InvalidStateException("Transaction is required.");
 		}
+	}
+
+	/**
+	 * @param ILogger $logger
+	 */
+	function setLogger( ILogger $logger ) : void
+	{
+		$this->logger = $logger;
 	}
 }
