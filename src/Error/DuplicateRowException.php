@@ -2,11 +2,10 @@
 
 namespace Kucbel\Database\Error;
 
-use Kucbel\Database\Exception;
 use Kucbel\Database\Row\ActiveRow;
 use Throwable;
 
-class DuplicateRowException extends Exception
+class DuplicateRowException extends DuplicateKeyException
 {
 	/**
 	 * @var ActiveRow | null
