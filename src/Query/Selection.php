@@ -58,6 +58,7 @@ class Selection extends Table\Selection implements JsonSerializable
 	 * @param string $word
 	 * @param string $mode
 	 * @return string
+	 * @deprecated use Like
 	 */
 	static function like( string $word, string $mode = null ) : string
 	{
