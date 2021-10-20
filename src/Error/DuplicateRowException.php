@@ -2,7 +2,7 @@
 
 namespace Kucbel\Database\Error;
 
-use Kucbel\Database\Row\ActiveRow;
+use Nette\Database\Table\ActiveRow;
 use Throwable;
 
 class DuplicateRowException extends DuplicateKeyException
