@@ -142,4 +142,12 @@ class Transaction
 	{
 		$this->logger = $logger;
 	}
+
+	/**
+	 * @return bool
+	 */
+	function isActive() : bool
+	{
+		return $this->active;
+	}
 }
