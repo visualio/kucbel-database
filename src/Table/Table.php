@@ -193,9 +193,7 @@ class Table
 	 */
 	function findLazy( array $where = null, array $order = null, int $limit = null ) : iterable
 	{
-		$query = $this->query( $where, $order );
-
-		return new SelectionIterator( $query, $limit ?? $this->options['select'] );
+		return $this->query( $where, $order )->fetchLazy( $limit ?? $this->options['select'] );
 	}
 
 	/**
