@@ -85,10 +85,12 @@ class SelectionIterator implements Countable, Iterator
 	 */
 	function __clone()
 	{
+		$this->query = clone $this->query;
+		$this->cache = $this->empty;
+
 		$this->index =
 		$this->final = 0;
-
-		$this->cache = $this->empty;
+		$this->count = null;
 	}
 
 	/**
