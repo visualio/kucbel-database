@@ -266,7 +266,7 @@ class Table
 	 * @param string ...$names
 	 * @return ActiveRow | null
 	 */
-	function existOne( ActiveRow $row, string $name, string ...$names ) : ?ActiveRow
+	function existOne( ActiveRow $row, string $name, string ...$names ) : ActiveRow | null
 	{
 		$rows = $this->lookup( $row, $name, ...$names );
 

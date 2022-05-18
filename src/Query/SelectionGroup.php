@@ -32,7 +32,7 @@ class SelectionGroup extends Table\GroupedSelection implements JsonSerializable
 	 * @param string			$table
 	 * @param string			$column
 	 */
-	function __construct( Repository $repository, Explorer $explorer, Conventions $conventions, Selection $reference, ?Storage $storage, string $table, string $column )
+	function __construct( Repository $repository, Explorer $explorer, Conventions $conventions, Selection $reference, Storage | null $storage, string $table, string $column )
 	{
 		parent::__construct( $explorer, $conventions, $table, $column, $reference, $storage );
 

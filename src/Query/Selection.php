@@ -30,7 +30,7 @@ class Selection extends Table\Selection implements JsonSerializable
 	 * @param Storage | null	$storage
 	 * @param string			$table
 	 */
-	function __construct( Repository $repository, Explorer $explorer, Conventions $conventions, ?Storage $storage, string $table )
+	function __construct( Repository $repository, Explorer $explorer, Conventions $conventions, Storage | null $storage, string $table )
 	{
 		parent::__construct( $explorer, $conventions, $table, $storage );
 

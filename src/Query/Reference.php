@@ -9,8 +9,8 @@ trait Reference
 {
 	/**
 	 * @param string $table
-	 * @param string $column
+	 * @param string | null $column
 	 * @return ActiveRow | mixed | null
 	 */
-	abstract function ref( string $table, string $column = null ) : ?Nette\Database\Table\ActiveRow;
+	abstract function ref( string $table, string $column = null ) : Nette\Database\Table\ActiveRow | null;
 }

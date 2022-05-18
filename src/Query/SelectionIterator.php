@@ -57,18 +57,20 @@ class SelectionIterator implements Countable, Iterator
 	 */
 	function __construct( Selection $query, int $limit )
 	{
-		if( $limit < 1 ) {
+		if( $limit <= 0 ) {
 			throw new InvalidArgumentException("Limit must be greater than zero.");
 		}
 
 		$build = $query->getSqlBuilder();
 		$order = $build->getOrder();
-		$table = $build->getTableName();
 
 		if( !$order ) {
-			$order = implode(", {$table}.", (array) $query->getPrimary() );
+			$order = $query->getPrimary();
+			$table = $build->getTableName();
 
-			$query->order("{$table}.{$order}");
+			foreach( (array) $order as $index ) {
+				$query->order("{$table}.{$index}");
+			}
 		}
 
 		$this->query = $query;
@@ -92,7 +94,7 @@ class SelectionIterator implements Countable, Iterator
 	/**
 	 * @return Iterator | null
 	 */
-	protected function fetch() : ?Iterator
+	protected function fetch() : Iterator | null
 	{
 		$query = clone $this->query;
 		$query->limit( $this->limit, $this->final );
@@ -143,17 +145,17 @@ class SelectionIterator implements Countable, Iterator
 	}
 
 	/**
-	 * @return string | int
+	 * @return mixed
 	 */
-	function key()
+	function key() : mixed
 	{
 		return $this->cache->key();
 	}
 
 	/**
-	 * @return ActiveRow
+	 * @return ActiveRow | null
 	 */
-	function current()
+	function current() : ActiveRow | null
 	{
 		return $this->cache->current();
 	}
