@@ -138,6 +138,15 @@ trait Alteration
 	}
 
 	/**
+	 * @param int $limit
+	 * @return ActiveRow[]
+	 */
+	function fetchLazy( int $limit ) : iterable
+	{
+		return new SelectionIterator( $this, $limit );
+	}
+
+	/**
 	 * @return mixed
 	 */
 	function jsonSerialize()
