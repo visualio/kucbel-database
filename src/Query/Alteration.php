@@ -147,9 +147,9 @@ trait Alteration
 	}
 
 	/**
-	 * @return mixed
+	 * @return array
 	 */
-	function jsonSerialize()
+	function jsonSerialize() : array
 	{
 		$json = false;
 		$data = [];

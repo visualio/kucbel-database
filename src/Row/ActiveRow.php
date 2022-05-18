@@ -18,7 +18,7 @@ class ActiveRow extends Nette\Database\Table\ActiveRow implements JsonSerializab
 	/**
 	 * @return static
 	 */
-	function reload() : self
+	function reload() : static
 	{
 		$table = $this->getTable();
 		$where = $this->getPrimary();
@@ -38,15 +38,15 @@ class ActiveRow extends Nette\Database\Table\ActiveRow implements JsonSerializab
 	 * @return mixed
 	 * @internal
 	 */
-	final function jsonSerialize()
+	final function jsonSerialize() : mixed
 	{
 		return $this->toJson();
 	}
 
 	/**
-	 * @return array
+	 * @return mixed
 	 */
-	function toJson()
+	function toJson() : mixed
 	{
 		return $this->toArray();
 	}
