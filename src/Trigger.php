@@ -12,13 +12,21 @@ trait Trigger
 	/**
 	 * @param string $event
 	 * @param callable $listen
-	 * @return $this
 	 */
-	function subscribe( string $event, callable $listen )
+	function subscribe( string $event, callable $listen ) : void
 	{
 		$this->listens[ $event ][] = $listen;
+	}
 
-		return $this;
+	/**
+	 * @param object $service
+	 * @param array $events
+	 */
+	function subscribeMany( object $service, array $events ) : void
+	{
+		foreach( $events as $event => $method ) {
+			$this->listens[ $event ][] = [ $service, $method ];
+		}
 	}
 
 	/**
