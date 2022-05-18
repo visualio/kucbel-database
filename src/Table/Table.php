@@ -7,6 +7,7 @@ use Kucbel\Database\Explorer;
 use Kucbel\Database\Literal;
 use Kucbel\Database\Query\Selection;
 use Kucbel\Database\Query\SelectionIterator;
+use Kucbel\Database\Trigger;
 use Kucbel\Iterators\ChunkIterator;
 use Kucbel\Iterators\FilterIterator;
 use Kucbel\Iterators\ModifyIterator;
@@ -16,7 +17,7 @@ use Nette\SmartObject;
 
 class Table
 {
-	use SmartObject;
+	use SmartObject, Trigger;
 
 	/**
 	 * @var Explorer
@@ -28,12 +29,6 @@ class Table
 	 * @var string
 	 */
 	protected $table;
-
-	/**
-	 * @var string | null
-	 * @deprecated
-	 */
-	protected $quote;
 
 	/**
 	 * @var array
@@ -53,8 +48,8 @@ class Table
 	 * Table constructor.
 	 *
 	 * @param string $table
-	 * @param array $options
-	 * @param array $defaults
+	 * @param array|null $options
+	 * @param array|null $defaults
 	 */
 	function __construct( string $table, array $options = null, array $defaults = null )
 	{
@@ -78,42 +73,26 @@ class Table
 	}
 
 	/**
-	 * @return string
-	 * @deprecated
-	 */
-	function getName() : string
-	{
-		return $this->table;
-	}
-
-	/**
-	 * @return string
-	 * @deprecated
-	 */
-	function getQuotedName() : string
-	{
-		return $this->quote ?? $this->quote = $this->explorer->getConnection()->getDriver()->delimite( $this->table );
-	}
-
-	/**
-	 * @param mixed $id
+	 * @param string | int | array $id
 	 * @return ActiveRow
 	 * @throws MissingRowException
 	 */
-	function fetch( $id ) : ActiveRow
+	function fetch( string | int | array $id ) : ActiveRow
 	{
 		$row = $this->find( $id );
 
 		if( !$row ) {
-			throw new MissingRowException("Row wasn't found.");
+			$key = $this->getPrimary( $id );
+
+			throw new MissingRowException("Row {$key} wasn't found.");
 		}
 
 		return $row;
 	}
 
 	/**
-	 * @param array $where
-	 * @param array $order
+	 * @param array | null $where
+	 * @param array | null $order
 	 * @param bool $limit
 	 * @return ActiveRow
 	 * @throws MissingRowException
@@ -131,17 +110,18 @@ class Table
 
 	/**
 	 * @param string | int ...$ids
-	 * @return array
+	 * @return ActiveRow[]
+	 * @throws MissingRowException
 	 */
-	function fetchEnum( ...$ids ) : array
+	function fetchEnum( string | int ...$ids ) : array
 	{
 		$rows = $this->findEnum( ...$ids );
 
 		foreach( $ids as $id ) {
-			$id = (string) $id;
-
 			if( !isset( $rows[ $id ] )) {
-				throw new MissingRowException("Row wasn't found.");
+				$key = $this->getPrimary( $id );
+
+				throw new MissingRowException("Row {$key} wasn't found.");
 			}
 		}
 
@@ -152,32 +132,32 @@ class Table
 	 * @param mixed $id
 	 * @return ActiveRow | null
 	 */
-	function find( $id ) : ?ActiveRow
+	function find( string | int | array | null $id ) : ActiveRow | null
 	{
-		if( $id !== null ) {
-			return $this->explorer->table( $this->table )
-				->wherePrimary( $id )
-				->fetch();
-		} else {
+		if( $id === '' or $id === [] or $id === null ) {
 			return null;
 		}
+
+		return $this->explorer->table( $this->table )
+			->wherePrimary( $id )
+			->fetch();
 	}
 
 	/**
-	 * @param array $where
-	 * @param array $order
+	 * @param array | null $where
+	 * @param array | null $order
 	 * @param bool $limit
 	 * @return ActiveRow | null
 	 */
-	function findOne( array $where = null, array $order = null, bool $limit = false ) : ?ActiveRow
+	function findOne( array $where = null, array $order = null, bool $limit = false ) : ActiveRow | null
 	{
 		return $this->query( $where, $order, $limit ? [ 1 ] : null )->fetch();
 	}
 
 	/**
-	 * @param array $where
-	 * @param array $order
-	 * @param array $limit
+	 * @param array | null $where
+	 * @param array | null $order
+	 * @param array | null $limit
 	 * @return ActiveRow[]
 	 */
 	function findMany( array $where = null, array $order = null, array $limit = null ) : array
@@ -186,9 +166,9 @@ class Table
 	}
 
 	/**
-	 * @param array $where
-	 * @param array $order
-	 * @param int $limit
+	 * @param array | null $where
+	 * @param array | null $order
+	 * @param int | null $limit
 	 * @return ActiveRow[]
 	 */
 	function findLazy( array $where = null, array $order = null, int $limit = null ) : iterable
@@ -199,7 +179,7 @@ class Table
 	}
 
 	/**
-	 * @param array $order
+	 * @param array | null $order
 	 * @return ActiveRow[]
 	 */
 	function findAll( array $order = null ) : array
@@ -208,32 +188,32 @@ class Table
 	}
 
 	/**
-	 * @param string | int ...$ids
-	 * @return array
+	 * @param string | int | null ...$ids
+	 * @return ActiveRow[]
 	 */
-	function findEnum( ...$ids ) : array
+	function findEnum( string | int | null ...$ids ) : array
 	{
 		$idx = [];
 
 		foreach( $ids as $id ) {
 			if( $id !== null ) {
-				$idx[ (string) $id ] = $id;
+				$idx[ $id ] = $id;
 			}
 		}
 
-		if( $idx ) {
-			return $this->explorer->table( $this->table )
-				->wherePrimary( array_values( $idx ))
-				->fetchAll();
-		} else {
+		if( !$idx ) {
 			return [];
 		}
+
+		return $this->explorer->table( $this->table )
+			->wherePrimary( array_values( $idx ))
+			->fetchAll();
 	}
 
 	/**
-	 * @param array $where
-	 * @param array $order
-	 * @param array $limit
+	 * @param array | null $where
+	 * @param array | null $order
+	 * @param array | null $limit
 	 * @return Selection
 	 */
 	function query( array $where = null, array $order = null, array $limit = null ) : Selection
@@ -274,7 +254,7 @@ class Table
 	}
 
 	/**
-	 * @param array $where
+	 * @param array | null $where
 	 * @param string $column
 	 * @return int
 	 */
@@ -314,7 +294,7 @@ class Table
 	/**
 	 * @param ActiveRow $row
 	 * @param string ...$names
-	 * @return FilterIterator & ActiveRow[]
+	 * @return FilterIterator
 	 */
 	protected function lookup( ActiveRow $row, string ...$names ) : iterable
 	{
@@ -346,9 +326,9 @@ class Table
 
 	/**
 	 * @param array $array
-	 * @param array $where
-	 * @param array $order
-	 * @param array $limit
+	 * @param array | null $where
+	 * @param array | null $order
+	 * @param array | null $limit
 	 * @return array
 	 */
 	function listMany( array $array, array $where = null, array $order = null, array $limit = null ) : array
@@ -358,7 +338,7 @@ class Table
 
 	/**
 	 * @param array $array
-	 * @param array $order
+	 * @param array | null $order
 	 * @return array
 	 */
 	function listAll( array $array, array $order = null ) : array
@@ -368,9 +348,9 @@ class Table
 
 	/**
 	 * @param array $array
-	 * @param array $where
-	 * @param array $order
-	 * @param array $limit
+	 * @param array | null $where
+	 * @param array | null $order
+	 * @param array | null $limit
 	 * @return array
 	 */
 	protected function select( array $array, array $where = null, array $order = null, array $limit = null ) : array
@@ -403,99 +383,181 @@ class Table
 	}
 
 	/**
-	 * @param array $values
+	 * @param array $insert
 	 * @return ActiveRow
 	 * @throws TableException
 	 */
-	function insert( array $values ) : ActiveRow
+	function insert( array $insert ) : ActiveRow
 	{
-		$row = $this->explorer->table( $this->table )->insert( $values );
+		$this->dispatch('pre-insert', $insert );
+
+		$row = $this->explorer->table( $this->table )->insert( $insert );
 
 		if( !$row instanceof ActiveRow ) {
-			throw new TableException("Table \"{$this->table}\" didn't return row.");
+			throw new TableException("Table \"{$this->table}\" doesn't have primary key.");
 		}
+
+		$this->dispatch('post-insert', $row );
 
 		return $row;
 	}
 
 	/**
-	 * @param array $values
+	 * @param array $insert
 	 * @return int
 	 */
-	function insertOne( array $values ) : int
+	function insertOne( array $insert ) : int
 	{
-		$count = $this->explorer->query('INSERT INTO ?name ?values', $this->table, $values )->getRowCount();
+		if( !$insert ) {
+			return 0;
+		}
 
-		return (int) $count;
+		$this->dispatch('pre-insert-one', $insert );
+
+		if( !$insert ) {
+			return 0;
+		}
+
+		$count = (int) $this->explorer->query('INSERT INTO ?name ?values', $this->table, $insert )->getRowCount();
+
+		$this->dispatch('post-insert-one', $count );
+
+		return $count;
 	}
 
 	/**
-	 * @param array $values1
-	 * @param array $values2
+	 * @param array $insert
+	 * @param array $update
 	 * @return int
 	 */
-	function insertKey( array $values1, array $values2 ) : int
+	function insertKey( array $insert, array $update ) : int
 	{
-		$count = $this->explorer->query('INSERT INTO ?name ?values ON DUPLICATE KEY UPDATE ?set', $this->table, $values1, $values2 )->getRowCount();
+		if( !$insert or !$update ) {
+			return 0;
+		}
 
-		return (int) $count;
+		$this->dispatch('pre-insert-key', $insert, $update );
+
+		if( !$insert or !$update ) {
+			return 0;
+		}
+
+		$count = (int) $this->explorer->query('INSERT INTO ?name ?values ON DUPLICATE KEY UPDATE ?set', $this->table, $insert, $update )->getRowCount();
+
+		$this->dispatch('post-insert-key', $count );
+
+		return $count;
 	}
 
 	/**
-	 * @param array[] $values
-	 * @param int $batch
+	 * @param array[] $insert
+	 * @param int | null $batch
 	 * @return int
 	 */
-	function insertMany( iterable $values, int $batch = null ) : int
+	function insertMany( iterable $insert, int $batch = null ) : int
 	{
-		$chunks = new ChunkIterator( $values, $batch ?? $this->options['insert'] );
+		if( !$insert ) {
+			return 0;
+		}
+
+		$this->dispatch('pre-insert-many', $insert );
+
+		if( !$insert ) {
+			return 0;
+		}
+
+		$chunks = new ChunkIterator( $insert, $batch ?? $this->options['insert'] );
 		$count = 0;
 
 		foreach( $chunks as $chunk ) {
-			$count += $this->explorer->query('INSERT INTO ?name ?values', $this->table, $chunk )->getRowCount();
+			$count += (int) $this->explorer->query('INSERT INTO ?name ?values', $this->table, $chunk )->getRowCount();
 		}
+
+		$this->dispatch('pre-insert-many', $count );
 
 		return $count;
 	}
 
 	/**
 	 * @param ActiveRow $row
-	 * @param array $values
+	 * @param array $update
 	 * @return bool
 	 * @throws TableException
 	 */
-	function update( ActiveRow $row, array $values ) : bool
+	function update( ActiveRow $row, array $update ) : bool
 	{
-		$id = $row->getSignature();
-		$ok = $row->update( $values );
-
-		if( $this->options['strict'] and !$ok ) {
-			throw new TableException("Table '{$this->table}' didn't update row #{$id}.");
+		if( !$update ) {
+			return false;
 		}
 
-		return $ok;
+		$this->dispatch('pre-update', $row, $update );
+
+		if( !$update ) {
+			return false;
+		}
+
+		$index = $row->getPrimary();
+		$count = $row->update( $update );
+
+		if( $this->options['strict'] and !$count ) {
+			$key = $this->getPrimary( $index );
+
+			throw new TableException("Row {$key} wasn't updated.");
+		}
+
+		$this->dispatch('post-update', $row, $count );
+
+		return $count;
 	}
 
 	/**
-	 * @param array $values
-	 * @param array $where
-	 * @param array $order
-	 * @param int $limit
+	 * @param array $update
+	 * @param array | null $where
+	 * @param array | null $order
+	 * @param int | null $limit
 	 * @return int
 	 */
-	function updateMany( array $values, array $where = null, array $order = null, int $limit = null ) : int
+	function updateMany( array $update, array $where = null, array $order = null, int $limit = null ) : int
 	{
-		return $this->query( $where, $order, [ $limit ])->update( $values );
+		if( !$update ) {
+			return 0;
+		}
+
+		$this->dispatch('pre-update-many', $update );
+
+		if( !$update ) {
+			return 0;
+		}
+
+		$count = $this->query( $where, $order, [ $limit ])->update( $update );
+
+		$this->dispatch('post-update-many', $count );
+
+		return $count;
 	}
 
 	/**
-	 * @param array $values
-	 * @param array $order
+	 * @param array $update
+	 * @param array | null $order
 	 * @return int
 	 */
-	function updateAll( array $values, array $order = null ) : int
+	function updateAll( array $update, array $order = null ) : int
 	{
-		return $this->query( null, $order )->update( $values );
+		if( !$update ) {
+			return 0;
+		}
+
+		$this->dispatch('pre-update-all', $update );
+
+		if( !$update ) {
+			return 0;
+		}
+
+		$count = $this->query( null, $order )->update( $update );
+
+		$this->dispatch('post-update-all', $count );
+
+		return $count;
 	}
 
 	/**
@@ -505,25 +567,37 @@ class Table
 	 */
 	function delete( ActiveRow $row ) : bool
 	{
-		$id = $row->getSignature();
-		$ok = $row->delete();
+		$this->dispatch('pre-delete', $row );
 
-		if( $this->options['strict'] and !$ok ) {
-			throw new TableException("Table '{$this->table}' didn't delete row #{$id}.");
+		$index = $row->getPrimary();
+		$count = $row->delete();
+
+		if( $this->options['strict'] and !$count ) {
+			$key = $this->getPrimary( $index );
+
+			throw new TableException("Row {$key} wasn't deleted.");
 		}
 
-		return $ok;
+		$this->dispatch('post-delete', $index, $count );
+
+		return $count;
 	}
 
 	/**
-	 * @param array $where
-	 * @param array $order
-	 * @param int $limit
+	 * @param array | null $where
+	 * @param array | null $order
+	 * @param int | null $limit
 	 * @return int
 	 */
 	function deleteMany( array $where = null, array $order = null, int $limit = null ) : int
 	{
-		return $this->query( $where, $order, [ $limit ])->delete();
+		$this->dispatch('pre-delete-many');
+
+		$count = $this->query( $where, $order, [ $limit ])->delete();
+
+		$this->dispatch('post-delete-many', $count );
+
+		return $count;
 	}
 
 	/**
@@ -531,34 +605,44 @@ class Table
 	 */
 	function deleteAll() : int
 	{
-		return $this->query()->delete();
+		$this->dispatch('pre-delete-all');
+
+		$count = $this->query()->delete();
+
+		$this->dispatch('post-delete-all', $count );
+
+		return $count;
 	}
 
 	/**
-	 * @param array $values
-	 * @param array $where
-	 * @param array $order
-	 * @param int $limit
+	 * @param array $update
+	 * @param array | null $where
+	 * @param array | null $order
+	 * @param int | null $limit
 	 * @return int
 	 */
-	function adjust( array $values, array $where = null, array $order = null, int $limit = null ) : int
+	function adjust( array $update, array $where = null, array $order = null, int $limit = null ) : int
 	{
-		foreach( $values as $field => $value ) {
-			if( is_int( $value ) or is_float( $value )) {
-				if( $value > 0 ) {
-					$equal = '+';
-				} elseif( $value < 0 ) {
-					$equal = '-';
-					$value = - $value;
-				} else {
-					throw new InvalidArgumentException("Value can't be zero.");
-				}
-
-				$values[ $field ] = new Literal("?name {$equal} ?", $field, $value );
+		foreach( $update as $index => $value ) {
+			if( !is_int( $value ) and !is_float( $value )) {
+				continue;
 			}
+
+			if( $value > 0 ) {
+				$equal = '+';
+			} elseif( $value < 0 ) {
+				$equal = '-';
+				$value = - $value;
+			} else {
+				unset( $update[ $index ] );
+
+				continue;
+			}
+
+			$update[ $index ] = new Literal("?name {$equal} ?", $index, $value );
 		}
 
-		return $this->updateMany( $values, $where, $order, $limit );
+		return $this->updateMany( $update, $where, $order, $limit );
 	}
 
 	/**
@@ -599,5 +683,34 @@ class Table
 		}
 
 		return (int) $id;
+	}
+
+	/**
+	 * @param string | int | array | null $value
+	 * @return string
+	 */
+	protected function getPrimary( string | int | array | null $value ) : string
+	{
+		if( is_string( $value )) {
+			return "\"{$value}\"";
+		} elseif( is_int( $value )) {
+			return "#{$value}";
+		} elseif( is_array( $value )) {
+			$array = [];
+
+			foreach( $value as $index => $piece ) {
+				$array[] = is_string( $index ) ? "{$index} : {$piece}" : $piece;
+			}
+
+			if( $array ) {
+				$array = implode(', ', $array );
+
+				return "[ {$array} ]";
+			} else {
+				return '[]';
+			}
+		} else {
+			return 'null';
+		}
 	}
 }

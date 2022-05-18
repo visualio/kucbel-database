@@ -7,16 +7,16 @@ trait Trigger
 	/**
 	 * @var array
 	 */
-	private $listens;
+	private $listens = [];
 
 	/**
-	 * @param array | string $event
-	 * @param callable $method
+	 * @param string $event
+	 * @param callable $listen
 	 * @return $this
 	 */
-	function subscribe( string $event, callable $method )
+	function subscribe( string $event, callable $listen )
 	{
-		$this->listens[ $event ][] = $method;
+		$this->listens[ $event ][] = $listen;
 
 		return $this;
 	}

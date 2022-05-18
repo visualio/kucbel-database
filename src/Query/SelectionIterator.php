@@ -55,7 +55,7 @@ class SelectionIterator implements Countable, Iterator
 	 * @param Selection $query
 	 * @param int $limit
 	 */
-	function __construct( Selection $query, int $limit = 100 )
+	function __construct( Selection $query, int $limit )
 	{
 		if( $limit < 1 ) {
 			throw new InvalidArgumentException("Limit must be greater than zero.");
