@@ -6,7 +6,6 @@ use Kucbel\Database\Error\MissingRowException;
 use Kucbel\Database\Explorer;
 use Kucbel\Database\Literal;
 use Kucbel\Database\Query\Selection;
-use Kucbel\Database\Query\SelectionIterator;
 use Kucbel\Database\Trigger;
 use Kucbel\Iterators\ChunkIterator;
 use Kucbel\Iterators\FilterIterator;
@@ -406,15 +405,7 @@ class Table
 	 */
 	function insertOne( array $insert ) : int
 	{
-		if( !$insert ) {
-			return 0;
-		}
-
 		$this->dispatch('pre-insert-one', $insert );
-
-		if( !$insert ) {
-			return 0;
-		}
 
 		$count = (int) $this->explorer->query('INSERT INTO ?name ?values', $this->table, $insert )->getRowCount();
 
