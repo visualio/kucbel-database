@@ -18,8 +18,7 @@
 		"nette/robot-loader": "^3.0",
 		"nette/utils": "^3.1",
 
-		"kucbel/iterators": "^1.0",
-		"kucbel/scalar": "^3.0"
+		"kucbel/iterators": "^1.0"
 	},
 	"autoload": {
 		"classmap": ["src"]

@@ -29,11 +29,11 @@ class Explorer extends Nette\Database\Explorer
 	/**
 	 * Context constructor.
 	 *
-	 * @param Repository	$repository
-	 * @param Connection	$connection
-	 * @param IStructure	$structure
-	 * @param Conventions	$conventions
-	 * @param Storage		$storage
+	 * @param Repository			$repository
+	 * @param Connection			$connection
+	 * @param IStructure			$structure
+	 * @param Conventions | null	$conventions
+	 * @param Storage | null		$storage
 	 */
 	function __construct( Repository $repository, Connection $connection, IStructure $structure, Conventions $conventions = null, Storage $storage = null )
 	{

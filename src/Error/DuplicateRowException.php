@@ -16,9 +16,9 @@ class DuplicateRowException extends DuplicateKeyException
 	 * DuplicateRowException constructor.
 	 *
 	 * @param ActiveRow $duplicate
-	 * @param string $message
-	 * @param int $code
-	 * @param Throwable $previous
+	 * @param string | null $message
+	 * @param int | null $code
+	 * @param Throwable | null $previous
 	 */
 	function __construct( ActiveRow $duplicate, string $message = null, int $code = null, Throwable $previous = null )
 	{

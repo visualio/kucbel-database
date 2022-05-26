@@ -9,7 +9,6 @@ use Kucbel\Database\Row\ActiveRow;
 use Nette\Caching\Storage;
 use Nette\Database\Conventions;
 use Nette\Database\Table;
-use Nette\InvalidArgumentException;
 
 /**
  * Class Selection
@@ -52,29 +51,5 @@ class Selection extends Table\Selection implements JsonSerializable
 		parent::select( $columns, ...$params );
 
 		return $this;
-	}
-
-	/**
-	 * @param string $word
-	 * @param string $mode
-	 * @return string
-	 * @deprecated use Like
-	 */
-	static function like( string $word, string $mode = null ) : string
-	{
-		$word = addcslashes( $word, '\_%');
-
-		switch( $mode ) {
-			case null:
-				return $word;
-			case '>':
-				return "{$word}%";
-			case '<':
-				return "%{$word}";
-			case '?':
-				return "%{$word}%";
-			default:
-				throw new InvalidArgumentException("Unknown flag '{$mode}'.");
-		}
 	}
 }

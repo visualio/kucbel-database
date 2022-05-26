@@ -8,7 +8,7 @@ trait Relation
 {
 	/**
 	 * @param string $table
-	 * @param string $column
+	 * @param string | null $column
 	 * @return SelectionGroup
 	 */
 	abstract function related( string $table, string $column = null ) : Nette\Database\Table\GroupedSelection;

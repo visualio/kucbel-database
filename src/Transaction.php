@@ -20,7 +20,7 @@ class Transaction
 	/**
 	 * @var ILogger | null
 	 */
-	private $logger;
+	private $logger = null;
 
 	/**
 	 * @var bool
@@ -55,21 +55,21 @@ class Transaction
 	 */
 	function wrap( callable $callback, ...$arguments )
 	{
-		$this->begin();
-
 		try {
-			$result = $callback( ...$arguments );
-		} catch( Throwable $error ) {
-			$this->revert();
+			$this->begin();
 
-			if( $this->logger ) {
-				$this->logger->log( $error, ILogger::EXCEPTION );
+			$result = $callback( ...$arguments );
+
+			$this->commit();
+		} catch( Throwable $error ) {
+			if( $this->active ) {
+				$this->revert();
 			}
+
+			$this->logger?->log( $error, ILogger::EXCEPTION );
 
 			throw $error;
 		}
-
-		$this->commit();
 
 		return $result;
 	}
@@ -86,6 +86,7 @@ class Transaction
 		$this->dispatch('pre-begin');
 
 		$this->connection->beginTransaction();
+
 		$this->active = true;
 
 		$this->dispatch('post-begin');
@@ -103,6 +104,7 @@ class Transaction
 		$this->dispatch('pre-commit');
 
 		$this->connection->commit();
+
 		$this->active = false;
 
 		$this->dispatch('post-commit');
@@ -120,6 +122,7 @@ class Transaction
 		$this->dispatch('pre-revert');
 
 		$this->connection->rollBack();
+
 		$this->active = false;
 
 		$this->dispatch('post-revert');

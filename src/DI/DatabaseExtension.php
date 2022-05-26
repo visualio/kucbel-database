@@ -3,13 +3,13 @@
 namespace Kucbel\Database\DI;
 
 use Kucbel;
-use Kucbel\Scalar\Input\ExtensionInput;
-use Kucbel\Scalar\Validator\ValidatorException;
 use Nette;
 use Nette\DI\CompilerExtension;
 use Nette\DI\Definitions\ServiceDefinition;
 use Nette\InvalidStateException;
 use Nette\Loaders\RobotLoader;
+use Nette\Schema\Expect;
+use Nette\Schema\Schema;
 use Nette\Utils\Strings;
 use ReflectionClass;
 
@@ -20,12 +20,17 @@ class DatabaseExtension extends CompilerExtension
 	 */
 	function loadConfiguration()
 	{
-		$config = $this->getParameters();
+		if( $this->config->search ) {
+			$classes = $this->getClasses();
+		} else {
+			$classes = [];
+		}
+
 		$builder = $this->getContainerBuilder();
 
 		$builder->addDefinition( $this->prefix('repository'))
 			->setType( Kucbel\Database\Repository::class )
-			->setArguments([ $config['classes'], $config['default'] ]);
+			->setArguments([ $classes, $this->config->row->default ]);
 
 		$builder->addDefinition( $this->prefix('transaction'))
 			->setType( Kucbel\Database\Transaction::class );
@@ -40,11 +45,14 @@ class DatabaseExtension extends CompilerExtension
 	 */
 	function beforeCompile()
 	{
+		$arguments = [];
 		$arguments[] = $this->prefix('@repository');
 
 		$builder = $this->getContainerBuilder();
 
-		foreach( $builder->findByType( Nette\Database\Context::class ) as $service ) {
+		$services = $builder->findByType( Nette\Database\Explorer::class );
+
+		foreach( $services as $service ) {
 			if( !$service instanceof ServiceDefinition ) {
 				continue;
 			}
@@ -57,64 +65,54 @@ class DatabaseExtension extends CompilerExtension
 	}
 
 	/**
-	 * @return array
+	 * @return Schema
 	 */
-	private function getParameters() : array
+	function getConfigSchema() : Schema
 	{
-		$default = Kucbel\Database\Row\ActiveRow::class;
 		$parent = Nette\Database\Table\ActiveRow::class;
+		$custom = Kucbel\Database\Row\ActiveRow::class;
 
-		$input = new ExtensionInput( $this );
+		$test = [];
+		$test['row'] = function( string $value ) use( $parent ) {
+			return class_exists( $value ) and is_a( $value, $parent, true );
+		};
 
-		$mixed = $input->create('row')
-			->optional( $default )
-			->string();
+		$cast = [];
+		$cast['array'] = function( $value ) {
+			return is_scalar( $value ) ? [ $value ] : $value;
+		};
 
-		try {
-			$param['default'] = $mixed->equal( $parent )->fetch();
-		} catch( ValidatorException $ex ) {
-			$param['default'] = $mixed->class( $parent )->fetch();
-		}
+		return Expect::structure([
+			'row' => Expect::structure([
+				'default'	=> Expect::string( $custom )->assert( $test['row'], "Row must extend {$parent} class."),
+				'const'		=> Expect::string('TABLE')->pattern('[A-Z_]+'),
+			]),
 
-		$folders = $input->create('table.scan')
-			->optional()
-			->array()
-			->string()
-			->folder()
-			->fetch();
-
-		$const = $input->create('table.const')
-			->optional('TABLE')
-			->string()
-			->match('~^[A-Z][A-Z0-9]*(_+[A-Z0-9]+)*$~')
-			->fetch();
-
-		if( $folders ) {
-			$param['classes'] = $this->getClasses( $const, ...$folders );
-		} else {
-			$param['classes'] = [];
-		}
-
-		$input->match();
-
-		return $param;
+			'search' => Expect::arrayOf(
+				Expect::string()->assert('is_dir', "Search folder must exist."),
+			)->before( $cast['array'] ),
+		]);
 	}
 
 	/**
-	 * @param string $const
-	 * @param string ...$folders
 	 * @return array
 	 * @throws
 	 */
-	private function getClasses( string $const, string ...$folders ) : array
+	private function getClasses() : array
 	{
+		if( !$this->config->search ) {
+			throw new InvalidStateException("No folders to search.");
+		}
+
+		$const = $this->config->row->const;
+
 		$robot = new RobotLoader;
-		$robot->addDirectory( ...$folders );
+		$robot->addDirectory( ...$this->config->search );
 		$robot->reportParseErrors( false );
 		$robot->rebuild();
 
 		$parent = Nette\Database\Table\ActiveRow::class;
-		$classes = [];
+		$records = [];
 
 		foreach( $robot->getIndexedClasses() as $type => $file ) {
 			$class = new ReflectionClass( $type );
@@ -123,27 +121,33 @@ class DatabaseExtension extends CompilerExtension
 				continue;
 			}
 
-			$tables = (array) $class->getConstant( $const );
+			$tables = $class->getConstant( $const );
+
+			if( is_string( $tables )) {
+				$tables = [ $tables ];
+			} elseif( !is_array( $tables )) {
+				throw new InvalidStateException("Constant {$type}::{$const} has invalid format.");
+			}
 
 			foreach( $tables as $table ) {
 				if( !is_string( $table )) {
-					throw new InvalidStateException("Constant '{$type}::{$const}' has invalid format.");
+					throw new InvalidStateException("Constant {$type}::{$const} has invalid format.");
 				} elseif( !Strings::match( $table, '~^[a-z][a-z0-9]*(_+[a-z0-9]+)*$~i')) {
-					throw new InvalidStateException("Constant '{$type}::{$const}' has invalid table name '{$table}'.");
+					throw new InvalidStateException("Constant {$type}::{$const} has invalid table name \"{$table}\".");
 				}
 
-				$dupe = $classes[ $table ] ?? null;
+				$dupe = $records[ $table ] ?? null;
 
 				if( $dupe ) {
-					throw new InvalidStateException("Classes '{$dupe}' and '{$type}' are mapped to the same table '{$table}'.");
+					throw new InvalidStateException("Classes {$dupe} and {$type} are mapped to the same table \"{$table}\".");
 				}
 
-				$classes[ $table ] = $class->getName();
+				$records[ $table ] = $class->getName();
 			}
 		}
 
-		ksort( $classes );
+		ksort( $records );
 
-		return $classes;
+		return $records;
 	}
 }

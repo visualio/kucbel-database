@@ -31,13 +31,13 @@ trait Alteration
 	}
 
 	/**
-	 * @param string $table
+	 * @param string | null $table
 	 * @return Selection
 	 */
 	function createSelectionInstance( string $table = null ) : Nette\Database\Table\Selection
 	{
 		/** @var Selection $this */
-		return new Selection( $this->repository, $this->context, $this->conventions, $this->cache ? $this->cache->getStorage() : null, $table ?? $this->name );
+		return new Selection( $this->repository, $this->context, $this->conventions, $this->cache?->getStorage(), $table ?? $this->name );
 	}
 
 	/**
@@ -45,10 +45,10 @@ trait Alteration
 	 * @param string $column
 	 * @return SelectionGroup
 	 */
-	protected function createGroupedSelectionInstance( $table, $column ) : Nette\Database\Table\GroupedSelection
+	protected function createGroupedSelectionInstance( string $table, string $column ) : Nette\Database\Table\GroupedSelection
 	{
 		/** @var Selection $this */
-		return new SelectionGroup( $this->repository, $this->context, $this->conventions, $this, $this->cache ? $this->cache->getStorage() : null, $table, $column );
+		return new SelectionGroup( $this->repository, $this->context, $this->conventions, $this, $this->cache?->getStorage(), $table, $column );
 	}
 
 	/**

@@ -2,7 +2,6 @@
 
 namespace Kucbel\Database;
 
-use Nette\Database\Table\ActiveRow;
 use Nette\SmartObject;
 
 class Repository
@@ -10,7 +9,7 @@ class Repository
 	use SmartObject;
 
 	/**
-	 * @var string[] | null
+	 * @var string[]
 	 */
 	private $classes;
 
@@ -25,10 +24,10 @@ class Repository
 	 * @param string[] $classes
 	 * @param string $default
 	 */
-	function __construct( array $classes = null, string $default = null )
+	function __construct( array $classes, string $default )
 	{
 		$this->classes = $classes;
-		$this->default = $default ?? ActiveRow::class;
+		$this->default = $default;
 	}
 
 	/**
